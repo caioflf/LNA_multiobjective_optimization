@@ -1,0 +1,95 @@
+Recommended SKY130 RF transistor cells to consider for layout-intended RF analog design.
+
+Included:
+- sky130_fd_pr__rf_nfet_01v8_b* fixed RF NMOS cells
+- sky130_fd_pr__rf_nfet_01v8_lvt_b* fixed RF LVT NMOS cells
+- sky130_fd_pr__rf_pfet_01v8_b* fixed RF PMOS cells
+
+ Include Template
+  For ngspice, put this at the top of every generated netlist:
+
+  .param corner = 0
+
+  .lib "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice" tt
+  .include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/corners/tt/rf.spice"
+
+  For another corner, change both tt locations:
+
+  .lib "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice" ff
+  .include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/corners/ff/rf.spice"
+
+  Valid RF corner folders should include:
+
+  tt
+  ff
+  ss
+  fs
+  sf
+
+  The RF include file points to the correct RF model files internally, including:
+
+  /usr/local/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__rf_nfet_01v8.pm3.spice
+  /usr/local/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__rf_nfet_01v8_b.pm3.spice
+  /usr/local/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__rf_nfet_01v8_lvt_b.pm3.spice
+  /usr/local/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__rf_pfet_01v8.pm3.spice
+  /usr/local/share/pdk/sky130A/libs.ref/sky130_fd_pr/spice/sky130_fd_pr__rf_pfet_01v8_b.pm3.spice
+
+  So your optimizer only needs to emit:
+
+  .lib "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice" <corner>
+  .include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/corners/<corner>/rf.spice"
+
+sky130_fd_pr__rf_nfet_01v8_bM02W1p65L0p15
+sky130_fd_pr__rf_nfet_01v8_bM02W1p65L0p18
+sky130_fd_pr__rf_nfet_01v8_bM02W1p65L0p25
+sky130_fd_pr__rf_nfet_01v8_bM02W3p00L0p15
+sky130_fd_pr__rf_nfet_01v8_bM02W3p00L0p18
+sky130_fd_pr__rf_nfet_01v8_bM02W3p00L0p25
+sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p15
+sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p18
+sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25
+sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p15
+sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p18
+sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p25
+sky130_fd_pr__rf_nfet_01v8_bM04W3p00L0p15
+sky130_fd_pr__rf_nfet_01v8_bM04W3p00L0p18
+sky130_fd_pr__rf_nfet_01v8_bM04W3p00L0p25
+sky130_fd_pr__rf_nfet_01v8_bM04W5p00L0p15
+sky130_fd_pr__rf_nfet_01v8_bM04W5p00L0p18
+sky130_fd_pr__rf_nfet_01v8_bM04W5p00L0p25
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W1p65L0p15
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W1p65L0p18
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W1p65L0p25
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W3p00L0p15
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W3p00L0p18
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W3p00L0p25
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p15
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p18
+sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p25
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W1p65L0p15
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W1p65L0p18
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W1p65L0p25
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W3p00L0p15
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W3p00L0p18
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W3p00L0p25
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W5p00L0p15
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W5p00L0p18
+sky130_fd_pr__rf_nfet_01v8_lvt_bM04W5p00L0p25
+sky130_fd_pr__rf_pfet_01v8_bM02W1p65L0p15
+sky130_fd_pr__rf_pfet_01v8_bM02W1p65L0p18
+sky130_fd_pr__rf_pfet_01v8_bM02W1p65L0p25
+sky130_fd_pr__rf_pfet_01v8_bM02W3p00L0p15
+sky130_fd_pr__rf_pfet_01v8_bM02W3p00L0p18
+sky130_fd_pr__rf_pfet_01v8_bM02W3p00L0p25
+sky130_fd_pr__rf_pfet_01v8_bM02W5p00L0p15
+sky130_fd_pr__rf_pfet_01v8_bM02W5p00L0p18
+sky130_fd_pr__rf_pfet_01v8_bM02W5p00L0p25
+sky130_fd_pr__rf_pfet_01v8_bM04W1p65L0p15
+sky130_fd_pr__rf_pfet_01v8_bM04W1p65L0p18
+sky130_fd_pr__rf_pfet_01v8_bM04W1p65L0p25
+sky130_fd_pr__rf_pfet_01v8_bM04W3p00L0p15
+sky130_fd_pr__rf_pfet_01v8_bM04W3p00L0p18
+sky130_fd_pr__rf_pfet_01v8_bM04W3p00L0p25
+sky130_fd_pr__rf_pfet_01v8_bM04W5p00L0p15
+sky130_fd_pr__rf_pfet_01v8_bM04W5p00L0p18
+sky130_fd_pr__rf_pfet_01v8_bM04W5p00L0p25

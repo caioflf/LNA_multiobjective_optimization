@@ -1,0 +1,163 @@
+SKY130 RF-Oriented Passive Models
+Generated from installed PDK at /usr/local/share/pdk/sky130A
+
+Purpose
+-------
+Categorical/layout-aware passive model list for RF/LNA optimization.
+Prefer these over ideal R/L/C elements when noise, parasitics, and later
+layout correlation matter.
+
+
+Recommended Includes
+--------------------
+Use these in addition to the MOS/RF corner includes:
+
+.include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/capacitors/sky130_fd_pr__model__cap_mim.model.spice"
+.include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/capacitors/sky130_fd_pr__model__cap_vpp_only_p.model.spice"
+.include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/capacitors/sky130_fd_pr__model__cap_vpp_only_pq.model.spice"
+.include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/capacitors/sky130_fd_pr__model__cap_var.model.spice"
+.include "/usr/local/share/pdk/sky130A/libs.tech/ngspice/sky130_fd_pr__model__inductors.model.spice"
+
+
+Inductors - Best Categorical RF Choices
+---------------------------------------
+Pin order: a b ct sub
+
+sky130_fd_pr__ind_03_90
+sky130_fd_pr__ind_05_125
+sky130_fd_pr__ind_05_220
+
+Example:
+XLIN in gate ct 0 sky130_fd_pr__ind_05_125
+
+Notes:
+- Treat these as categorical optimizer choices.
+- These include explicit parasitic resistance/capacitance/substrate effects.
+- They are better than ideal L elements for RF/noise optimization.
+
+
+Capacitors - Fixed/Layout-Aware VPP Choices
+-------------------------------------------
+Prefer these as categorical capacitor choices when layout correlation matters.
+Pin order varies by model. Common forms are:
+  c0 c1 b
+  c0 c1 b m3
+  c0 c1 b m4
+  c0 c1 b m5
+
+sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3m4_shieldm5
+sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3m4_shieldpom5
+sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3m4_shieldl1m5
+sky130_fd_pr__cap_vpp_08p6x07p8_m1m2m3_shieldl1m5_floatm4
+sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3_shieldl1m5_floatm4
+sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3_shieldm4
+sky130_fd_pr__cap_vpp_06p8x06p1_l1m1m2m3_shieldpom4
+sky130_fd_pr__cap_vpp_06p8x06p1_m1m2m3_shieldl1m4
+sky130_fd_pr__cap_vpp_08p6x07p8_m1m2_noshield
+sky130_fd_pr__cap_vpp_02p4x04p6_m1m2_noshield
+sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_noshield
+sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield
+sky130_fd_pr__cap_vpp_01p8x01p8_m1m2_noshield
+
+Example, 4-terminal shielded VPP:
+XVPP1 n1 n2 0 vdd sky130_fd_pr__cap_vpp_11p5x11p7_l1m1m2m3m4_shieldm5 mult=1
+
+Notes:
+- Treat VPP capacitors as categorical fixed cells.
+- Confirm pin order from the specific .model.spice file before final netlisting.
+
+
+Capacitors - MIM Choices
+------------------------
+Pin order: c0 c1
+
+sky130_fd_pr__cap_mim_m3_1
+sky130_fd_pr__cap_mim_m3_2
+
+Example:
+XMIM1 n1 n2 sky130_fd_pr__cap_mim_m3_1 w=8 l=8 mf=1
+XMIM2 n1 n2 sky130_fd_pr__cap_mim_m3_2 w=8 l=8 mf=1
+
+Suggested categorical grid for optimizer:
+  w,l = 2x2, 4x4, 6x6, 8x8, 10x10, 12x12 um
+  mf  = 1, 2, 4, 8
+
+Notes:
+- MIM caps are scalable, but use a discrete grid for layout-aware optimization.
+- Good choices for coupling, bypassing, matching, and load/tank capacitors.
+
+
+Capacitors - Varactors
+----------------------
+Pin order: c0 c1 b
+
+sky130_fd_pr__cap_var_lvt
+sky130_fd_pr__cap_var_hvt
+
+Example:
+XVAR1 tank vtune 0 sky130_fd_pr__cap_var_lvt w=5 l=0.5 vm=1
+
+Notes:
+- Use only if tunability is part of the LNA/matching network.
+- Otherwise prefer MIM or VPP caps for fixed matching networks.
+
+
+Resistors - Recommended Categorical Families
+--------------------------------------------
+Use PDK resistor subcircuits over ideal R when noise/parasitic correlation matters.
+Common pin order: r0 r1 b
+Generic diffusion pin order may be: t1 t2 b
+
+Moderate/high-value poly resistors:
+sky130_fd_pr__res_high_po
+sky130_fd_pr__res_high_po_0p35
+sky130_fd_pr__res_high_po_0p69
+sky130_fd_pr__res_high_po_1p41
+sky130_fd_pr__res_high_po_2p85
+sky130_fd_pr__res_high_po_5p73
+
+Extra-high-value poly resistors:
+sky130_fd_pr__res_xhigh_po
+sky130_fd_pr__res_xhigh_po_0p35
+sky130_fd_pr__res_xhigh_po_0p69
+sky130_fd_pr__res_xhigh_po_1p41
+sky130_fd_pr__res_xhigh_po_2p85
+sky130_fd_pr__res_xhigh_po_5p73
+
+Diffusion / well resistor options:
+sky130_fd_pr__res_iso_pw
+sky130_fd_pr__res_generic_nd
+sky130_fd_pr__res_generic_pd
+
+Examples:
+XRBIAS n1 n2 0 sky130_fd_pr__res_high_po_1p41
+XRFB   n1 n2 0 sky130_fd_pr__res_xhigh_po_0p69
+
+Notes:
+- Use resistors mainly for bias, feedback, damping, and isolation.
+- Avoid unnecessary resistance in the RF signal path because it adds thermal noise.
+- For final layout-aware simulation, confirm each resistor's parameters and pin order.
+
+
+Recommended Optimizer Categories
+--------------------------------
+Inductor choice:
+  ind_03_90
+  ind_05_125
+  ind_05_220
+
+Fixed capacitor choice:
+  selected cap_vpp_* cells
+
+Scalable capacitor grid:
+  cap_mim_m3_1, cap_mim_m3_2 on fixed W/L/MF grid
+
+Tunable capacitor choice:
+  cap_var_lvt, cap_var_hvt
+
+Resistor choice:
+  res_high_po_* and res_xhigh_po_* for bias/feedback
+
+Early exploration fallback:
+  ideal R/L/C is acceptable only for fast topology search. Switch to PDK passive
+  subcircuits before trusting gain, NF, S11, stability, or power tradeoffs.

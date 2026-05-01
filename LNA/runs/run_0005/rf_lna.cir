@@ -1,0 +1,85 @@
+* RF LNA - Common Source with Inductive Degeneration
+.lib "$PDK_ROOT/sky130A/libs.tech/combined/sky130.lib.spice" tt
+
+.options temp=27
+.param F0=2400000000.0
+.csparam f0=2400000000.0
+.param VDD=1.8
+.param VG=0.75
+.param WNMOS=62.08504277844339
+.param LNMOS=0.15
+.param LG=8e-09
+.param LS=1.5e-09
+.param LD=6.747040243755526e-09
+
+VDD vdd 0 DC {VDD}
+VBIAS vbias 0 DC {VG}
+
+VIN       src 0 AC 1 DC 0
+Rsource   src in 50
+CIN       in p1 1p
+LGATE p1 gate {LG}
+RBIAS gate vbias 1MEG
+LSRC source 0 {LS}
+xn1 drain gate source 0 sky130_fd_pr__nfet_01v8 l={LNMOS} w={WNMOS}
+LLOAD vdd drain {LD}
+COUT drain out 1p
+RLOAD out 0 50
+
+.control
+set sqrnoise
+op
+let idd = -i(VDD)
+let pdc = v(vdd) * idd
+echo idd = "$&idd"
+echo pdc = "$&pdc"
+ac dec 200 100MEG 10G
+
+setplot ac1
+let gain_db_vector = db(v(out)/v(in))
+meas ac gain_db       find    gain_db_vector                at=2400000000.0
+let gain_3db = gain_db - 3
+meas ac f_3db_low    when    gain_db_vector=gain_3db      rise=1
+meas ac f_3db_high   when    gain_db_vector=gain_3db      fall=1
+if (f_3db_low eq 0)
+  let f_3db_low = 100MEG
+end
+if (f_3db_high eq 0)
+  let f_3db_high = 10G
+end
+noise v(out) VIN dec 200 $&f_3db_low $&f_3db_high
+
+setplot ac1
+let vin_re_vector = real(v(in))
+meas ac vin_re       find    vin_re_vector                     at=2400000000.0
+let vin_im_vector = imag(v(in))
+meas ac vin_im       find    vin_im_vector                     at=2400000000.0
+let iin_re_vector = real(i(VIN))
+meas ac iin_re       find    iin_re_vector                  at=2400000000.0
+let iin_im_vector = imag(i(VIN))
+meas ac iin_im       find    iin_im_vector                    at=2400000000.0
+let vout_re_vector = real(v(out))
+meas ac vout_re      find    vout_re_vector                    at=2400000000.0
+let vout_im_vector = imag(v(out))
+meas ac vout_im      find    vout_im_vector                    at=2400000000.0
+setplot noise1
+let nn = 0
+while frequency[nn] < f0
+  let nn = nn +1
+end
+let fnn = frequency[nn]
+let nn1 = nn -1
+let fnn1 = frequency[nn1]
+let onn = onoise_spectrum[nn]
+let onn1 = onoise_spectrum[nn1]
+let onoise = onn1 +(f0 - fnn1)*(onn - onn1)/(fnn - fnn1)
+echo out_noise 						= "$&onoise"
+let inn = inoise_spectrum[nn]
+let inn1 = inoise_spectrum[nn1]
+let inoise = inn1 +(f0 - fnn1)*(inn - inn1)/(fnn - fnn1)
+echo in_noise 						= "$&inoise"
+setplot noise2
+print inoise_total
+print onoise_total
+.endc
+.end
