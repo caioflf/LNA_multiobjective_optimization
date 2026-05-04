@@ -1,0 +1,80 @@
+* RF LNA - Common Source with Inductive Degeneration
+.lib "$PDK_ROOT/sky130A/libs.tech/ngspice/sky130.lib.spice" tt
+
+.include "$PDK_ROOT/sky130A/libs.tech/ngspice/sky130_fd_pr__model__inductors.model.spice"
+
+.options temp=27
+.param F0=5000000000.0
+.csparam f0=5000000000.0
+.param VDD=1.8
+.param VG=0.8
+.param LG=5e-09
+.param LS=1e-09
+.param LD=5e-09
+
+VDD vdd 0 DC {VDD}
+VBIAS vbias 0 DC {VG}
+
+VIN       src 0 AC 1 DC 0
+Rsource   src in 50
+XINCAP in gate_in sky130_fd_pr__cap_mim_m3_2 w=10 l=10 mf=1
+XLGATE_l gate_in gate LGATE_l_ct 0 sky130_fd_pr__ind_03_90
+RBIAS gate vbias 1MEG
+XLSRC_r source 0 0 sky130_fd_pr__res_xhigh_po_5p73
+XLSRC_l source 0 LSRC_l_ct 0 sky130_fd_pr__ind_03_90
+XLSRC_c source 0 sky130_fd_pr__cap_mim_m3_2 w=10 l=10 mf=1
+xn1 drain gate source 0 sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25
+XLLOAD_r vdd drain 0 sky130_fd_pr__res_xhigh_po_5p73
+XLLOAD_l vdd drain LLOAD_l_ct 0 sky130_fd_pr__ind_05_220
+XLLOAD_c vdd drain sky130_fd_pr__cap_mim_m3_2 w=8 l=8 mf=1
+XOUTCAP drain out sky130_fd_pr__cap_mim_m3_2 w=10 l=10 mf=1
+RLOAD out 0 50
+
+.control
+set sqrnoise
+op
+let idd = -i(VDD)
+let pdc = v(vdd) * idd
+echo idd = "$&idd"
+echo pdc = "$&pdc"
+show all
+ac dec 200 100MEG 10G
+
+setplot ac1
+let gain_db_vector = db(v(out)/v(in))
+meas ac gain_db       find    gain_db_vector                at=5000000000.0
+let gain_3db = gain_db - 3
+let f_3db_low = 100MEG
+let f_3db_high = 10G
+meas ac f_3db_low    when    gain_db_vector=gain_3db      rise=1
+meas ac f_3db_high   when    gain_db_vector=gain_3db      fall=1
+noise v(out) VIN dec 200 $&f_3db_low $&f_3db_high
+
+setplot ac1
+let vin_re_vector = real(v(in))
+meas ac vin_re       find    vin_re_vector                     at=5000000000.0
+let vin_im_vector = imag(v(in))
+meas ac vin_im       find    vin_im_vector                     at=5000000000.0
+let iin_re_vector = real(i(VIN))
+meas ac iin_re       find    iin_re_vector                  at=5000000000.0
+let iin_im_vector = imag(i(VIN))
+meas ac iin_im       find    iin_im_vector                    at=5000000000.0
+let vout_re_vector = real(v(out))
+meas ac vout_re      find    vout_re_vector                    at=5000000000.0
+let vout_im_vector = imag(v(out))
+meas ac vout_im      find    vout_im_vector                    at=5000000000.0
+let vin_mag_vector = mag(v(in))
+meas ac vin_mag      find    vin_mag_vector                    at=5000000000.0
+let iin_mag_vector = mag(i(VIN))
+meas ac iin_mag      find    iin_mag_vector                    at=5000000000.0
+let vout_mag_vector = mag(v(out))
+meas ac vout_mag     find    vout_mag_vector                   at=5000000000.0
+let zin_re_vector = real(v(in)/(-i(VIN)))
+meas ac zin_re       find    zin_re_vector                     at=5000000000.0
+let zin_im_vector = imag(v(in)/(-i(VIN)))
+meas ac zin_im       find    zin_im_vector                     at=5000000000.0
+setplot noise2
+print inoise_total
+print onoise_total
+.endc
+.end

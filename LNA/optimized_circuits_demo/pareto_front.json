@@ -1,0 +1,1592 @@
+[
+  {
+    "evaluation_id": 1,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      2,
+      2,
+      0,
+      1,
+      30,
+      126,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 2,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 6.6,
+        "length_um": 0.25,
+        "m": 4,
+        "unit_width_um": 1.65
+      },
+      "vg": 0.7,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r01__l02__c05",
+          "passive_indexes": {
+            "r": 1,
+            "l": 2,
+            "c": 5
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r07__l01__c00",
+          "passive_indexes": {
+            "r": 7,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -41.0577,
+      "power": 4.33689e-05,
+      "F_BW": 108.5368,
+      "S11_db": -0.49686092592953424,
+      "NF_db": 132.51853223224737
+    },
+    "objectives": [
+      132.51853223224737,
+      4.33689e-05,
+      41.0577,
+      -108.5368,
+      -0.49686092592953424
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000001",
+    "error": null
+  },
+  {
+    "evaluation_id": 4,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      1,
+      3,
+      1,
+      2,
+      2,
+      58,
+      151,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p18",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 1,
+        "wtot_index": 3,
+        "length_index": 1
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "lvt",
+        "wtot_um": 10.0,
+        "length_um": 0.18,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.9,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l03__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 3,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r03__l01__c03",
+          "passive_indexes": {
+            "r": 3,
+            "l": 1,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r08__l02__c01",
+          "passive_indexes": {
+            "r": 8,
+            "l": 2,
+            "c": 1
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -18.8403,
+      "power": 0.000815327,
+      "F_BW": 75.0294,
+      "S11_db": -0.32004074835590396,
+      "NF_db": 115.93915069498108
+    },
+    "objectives": [
+      115.93915069498108,
+      0.000815327,
+      18.8403,
+      -75.0294,
+      -0.32004074835590396
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000004",
+    "error": null
+  },
+  {
+    "evaluation_id": 7,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      1,
+      3,
+      1,
+      3,
+      2,
+      59,
+      88,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p18",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 1,
+        "wtot_index": 3,
+        "length_index": 1
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "lvt",
+        "wtot_um": 10.0,
+        "length_um": 0.18,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 1.0,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l03__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 3,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r03__l01__c04",
+          "passive_indexes": {
+            "r": 3,
+            "l": 1,
+            "c": 4
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r04__l03__c04",
+          "passive_indexes": {
+            "r": 4,
+            "l": 3,
+            "c": 4
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -27.3756,
+      "power": 0.00119868,
+      "F_BW": 126.6276,
+      "S11_db": -0.31482145581135046,
+      "NF_db": 125.2006129415072
+    },
+    "objectives": [
+      125.2006129415072,
+      0.00119868,
+      27.3756,
+      -126.6276,
+      -0.31482145581135046
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000007",
+    "error": null
+  },
+  {
+    "evaluation_id": 8,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      4,
+      2,
+      3,
+      1,
+      5,
+      106,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W3p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 4,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 12.0,
+        "length_um": 0.25,
+        "m": 4,
+        "unit_width_um": 3.0
+      },
+      "vg": 1.0,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r00__l01__c04",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 4
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r05__l03__c04",
+          "passive_indexes": {
+            "r": 5,
+            "l": 3,
+            "c": 4
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -22.2965,
+      "power": 0.00114464,
+      "F_BW": 87.815,
+      "S11_db": -0.75452310482433,
+      "NF_db": 118.61291144441408
+    },
+    "objectives": [
+      118.61291144441408,
+      0.00114464,
+      22.2965,
+      -87.815,
+      -0.75452310482433
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000008",
+    "error": null
+  },
+  {
+    "evaluation_id": 9,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      2,
+      2,
+      0,
+      190,
+      85,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.9,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r10__l02__c03",
+          "passive_indexes": {
+            "r": 10,
+            "l": 2,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r04__l03__c01",
+          "passive_indexes": {
+            "r": 4,
+            "l": 3,
+            "c": 1
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -39.5469,
+      "power": 0.000590634,
+      "F_BW": 178.9132,
+      "S11_db": -0.03936432904529579,
+      "NF_db": 132.47419199422407
+    },
+    "objectives": [
+      132.47419199422407,
+      0.000590634,
+      39.5469,
+      -178.9132,
+      -0.03936432904529579
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000009",
+    "error": null
+  },
+  {
+    "evaluation_id": 17,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      2,
+      2,
+      0,
+      0,
+      30,
+      126,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 2,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 6.6,
+        "length_um": 0.25,
+        "m": 4,
+        "unit_width_um": 1.65
+      },
+      "vg": 0.7,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r01__l02__c05",
+          "passive_indexes": {
+            "r": 1,
+            "l": 2,
+            "c": 5
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r07__l01__c00",
+          "passive_indexes": {
+            "r": 7,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -45.0678,
+      "power": 4.33689e-05,
+      "F_BW": 109.4058,
+      "S11_db": -0.04771820445622141,
+      "NF_db": 135.26668357022845
+    },
+    "objectives": [
+      135.26668357022845,
+      4.33689e-05,
+      45.0678,
+      -109.4058,
+      -0.04771820445622141
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000017",
+    "error": null
+  },
+  {
+    "evaluation_id": 18,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      2,
+      2,
+      0,
+      1,
+      9,
+      126,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 2,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 6.6,
+        "length_um": 0.25,
+        "m": 4,
+        "unit_width_um": 1.65
+      },
+      "vg": 0.7,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r00__l02__c02",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 2
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r07__l01__c00",
+          "passive_indexes": {
+            "r": 7,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -40.5974,
+      "power": 4.33689e-05,
+      "F_BW": 40.5676,
+      "S11_db": -0.5816428138872771,
+      "NF_db": 132.46577132045041
+    },
+    "objectives": [
+      132.46577132045041,
+      4.33689e-05,
+      40.5974,
+      -40.5676,
+      -0.5816428138872771
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000018",
+    "error": null
+  },
+  {
+    "evaluation_id": 23,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      2,
+      2,
+      1,
+      75,
+      151,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.9,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r04__l01__c02",
+          "passive_indexes": {
+            "r": 4,
+            "l": 1,
+            "c": 2
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r08__l02__c01",
+          "passive_indexes": {
+            "r": 8,
+            "l": 2,
+            "c": 1
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -16.0912,
+      "power": 0.000593016,
+      "F_BW": 61.3674,
+      "S11_db": -0.6790326344040118,
+      "NF_db": 111.67078693647169
+    },
+    "objectives": [
+      111.67078693647169,
+      0.000593016,
+      16.0912,
+      -61.3674,
+      -0.6790326344040118
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000023",
+    "error": null
+  },
+  {
+    "evaluation_id": 27,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      2,
+      1,
+      0,
+      114,
+      124,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.8,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r06__l01__c05",
+          "passive_indexes": {
+            "r": 6,
+            "l": 1,
+            "c": 5
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r06__l03__c04",
+          "passive_indexes": {
+            "r": 6,
+            "l": 3,
+            "c": 4
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -33.2165,
+      "power": 0.000261656,
+      "F_BW": 112.3926,
+      "S11_db": -0.0857344935848092,
+      "NF_db": 129.85705846674736
+    },
+    "objectives": [
+      129.85705846674736,
+      0.000261656,
+      33.2165,
+      -112.3926,
+      -0.0857344935848092
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000027",
+    "error": null
+  },
+  {
+    "evaluation_id": 31,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      1,
+      2,
+      0,
+      190,
+      186,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p18",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 1
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.18,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.9,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r10__l02__c03",
+          "passive_indexes": {
+            "r": 10,
+            "l": 2,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r10__l02__c00",
+          "passive_indexes": {
+            "r": 10,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -31.2991,
+      "power": 0.000840378,
+      "F_BW": 163.1556,
+      "S11_db": -0.044313492079348385,
+      "NF_db": 125.25899411338844
+    },
+    "objectives": [
+      125.25899411338844,
+      0.000840378,
+      31.2991,
+      -163.1556,
+      -0.044313492079348385
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000031",
+    "error": null
+  },
+  {
+    "evaluation_id": 35,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      1,
+      0,
+      2,
+      30,
+      88,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p18",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 1
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.18,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.7,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l03__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 3,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r01__l02__c05",
+          "passive_indexes": {
+            "r": 1,
+            "l": 2,
+            "c": 5
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r04__l03__c04",
+          "passive_indexes": {
+            "r": 4,
+            "l": 3,
+            "c": 4
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -36.334,
+      "power": 0.000119208,
+      "F_BW": 41.0126,
+      "S11_db": -0.26085672831648704,
+      "NF_db": 125.06028510839158
+    },
+    "objectives": [
+      125.06028510839158,
+      0.000119208,
+      36.334,
+      -41.0126,
+      -0.26085672831648704
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000035",
+    "error": null
+  },
+  {
+    "evaluation_id": 37,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      1,
+      3,
+      2,
+      0,
+      0,
+      30,
+      85,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 1,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "lvt",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.7,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r01__l02__c05",
+          "passive_indexes": {
+            "r": 1,
+            "l": 2,
+            "c": 5
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r04__l03__c01",
+          "passive_indexes": {
+            "r": 4,
+            "l": 3,
+            "c": 1
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -35.8338,
+      "power": 0.000154429,
+      "F_BW": 38.1816,
+      "S11_db": -0.04661402911945962,
+      "NF_db": 125.8868625734952
+    },
+    "objectives": [
+      125.8868625734952,
+      0.000154429,
+      35.8338,
+      -38.1816,
+      -0.04661402911945962
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000037",
+    "error": null
+  },
+  {
+    "evaluation_id": 38,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      5,
+      2,
+      2,
+      1,
+      184,
+      126,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 5,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 20.0,
+        "length_um": 0.25,
+        "m": 4,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.9,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r10__l01__c03",
+          "passive_indexes": {
+            "r": 10,
+            "l": 1,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r07__l01__c00",
+          "passive_indexes": {
+            "r": 7,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -17.2032,
+      "power": 0.00116361,
+      "F_BW": 29.11,
+      "S11_db": -1.0678502375006143,
+      "NF_db": 108.16595513021541
+    },
+    "objectives": [
+      108.16595513021541,
+      0.00116361,
+      17.2032,
+      -29.11,
+      -1.0678502375006143
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000038",
+    "error": null
+  },
+  {
+    "evaluation_id": 39,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      1,
+      1,
+      0,
+      190,
+      85,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p18",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 1
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.18,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.8,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r10__l02__c03",
+          "passive_indexes": {
+            "r": 10,
+            "l": 2,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r04__l03__c01",
+          "passive_indexes": {
+            "r": 4,
+            "l": 3,
+            "c": 1
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -39.0501,
+      "power": 0.000381196,
+      "F_BW": 177.7804,
+      "S11_db": -0.04065572972949416,
+      "NF_db": 132.4518375406702
+    },
+    "objectives": [
+      132.4518375406702,
+      0.000381196,
+      39.0501,
+      -177.7804,
+      -0.04065572972949416
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000039",
+    "error": null
+  },
+  {
+    "evaluation_id": 40,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      2,
+      3,
+      2,
+      58,
+      167,
+      1
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 1.0,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l03__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 3,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r03__l01__c03",
+          "passive_indexes": {
+            "r": 3,
+            "l": 1,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r09__l01__c05",
+          "passive_indexes": {
+            "r": 9,
+            "l": 1,
+            "c": 5
+          }
+        },
+        "feedback": {
+          "identifier": "rlc_parallel__r00__l00__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0
+          }
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -20.3781,
+      "power": 0.00104769,
+      "F_BW": 79.292,
+      "S11_db": -0.2823449149486115,
+      "NF_db": 115.41198346136628
+    },
+    "objectives": [
+      115.41198346136628,
+      0.00104769,
+      20.3781,
+      -79.292,
+      -0.2823449149486115
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000040",
+    "error": null
+  },
+  {
+    "evaluation_id": 41,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      2,
+      0,
+      0,
+      190,
+      126,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.7,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l01__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r10__l02__c03",
+          "passive_indexes": {
+            "r": 10,
+            "l": 2,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r07__l01__c00",
+          "passive_indexes": {
+            "r": 7,
+            "l": 1,
+            "c": 0
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -44.959,
+      "power": 8.02699e-05,
+      "F_BW": 129.1972,
+      "S11_db": -0.04221155204191813,
+      "NF_db": 137.9679555433103
+    },
+    "objectives": [
+      137.9679555433103,
+      8.02699e-05,
+      44.959,
+      -129.1972,
+      -0.04221155204191813
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000041",
+    "error": null
+  },
+  {
+    "evaluation_id": 43,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      1,
+      3,
+      2,
+      1,
+      1,
+      190,
+      106,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_lvt_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 1,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "lvt",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.8,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r10__l02__c03",
+          "passive_indexes": {
+            "r": 10,
+            "l": 2,
+            "c": 3
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r05__l03__c04",
+          "passive_indexes": {
+            "r": 5,
+            "l": 3,
+            "c": 4
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -42.5493,
+      "power": 0.000346271,
+      "F_BW": 180.05552,
+      "S11_db": -0.4806173575395327,
+      "NF_db": 136.0506619086725
+    },
+    "objectives": [
+      136.0506619086725,
+      0.000346271,
+      42.5493,
+      -180.05552,
+      -0.4806173575395327
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000043",
+    "error": null
+  },
+  {
+    "evaluation_id": 44,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      4,
+      2,
+      3,
+      1,
+      5,
+      85,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W3p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 4,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 12.0,
+        "length_um": 0.25,
+        "m": 4,
+        "unit_width_um": 3.0
+      },
+      "vg": 1.0,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r00__l01__c04",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 4
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r04__l03__c01",
+          "passive_indexes": {
+            "r": 4,
+            "l": 3,
+            "c": 1
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -19.4016,
+      "power": 0.00114463,
+      "F_BW": 83.8146,
+      "S11_db": -0.7696752206055081,
+      "NF_db": 115.54680464424253
+    },
+    "objectives": [
+      115.54680464424253,
+      0.00114463,
+      19.4016,
+      -83.8146,
+      -0.7696752206055081
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000044",
+    "error": null
+  },
+  {
+    "evaluation_id": 47,
+    "status": "ok",
+    "valid": true,
+    "genome": [
+      0,
+      0,
+      3,
+      2,
+      2,
+      1,
+      5,
+      106,
+      0
+    ],
+    "candidate": {
+      "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+      "transistor_available": true,
+      "transistor_indexes": {
+        "device_type_index": 0,
+        "vt_index": 0,
+        "wtot_index": 3,
+        "length_index": 2
+      },
+      "transistor_parameters": {
+        "device_type": "nmos",
+        "threshold": "standard",
+        "wtot_um": 10.0,
+        "length_um": 0.25,
+        "m": 2,
+        "unit_width_um": 5.0
+      },
+      "vg": 0.9,
+      "networks": {
+        "gate": {
+          "identifier": "rlc_parallel__r00__l02__c00",
+          "passive_indexes": {
+            "r": 0,
+            "l": 2,
+            "c": 0
+          }
+        },
+        "source": {
+          "identifier": "rlc_parallel__r00__l01__c04",
+          "passive_indexes": {
+            "r": 0,
+            "l": 1,
+            "c": 4
+          }
+        },
+        "load": {
+          "identifier": "rlc_parallel__r05__l03__c04",
+          "passive_indexes": {
+            "r": 5,
+            "l": 3,
+            "c": 4
+          }
+        },
+        "feedback": {
+          "identifier": null,
+          "passive_indexes": null
+        }
+      }
+    },
+    "metrics": {
+      "gain_db": -25.505,
+      "power": 0.000592996,
+      "F_BW": 89.7316,
+      "S11_db": -0.6498624706613483,
+      "NF_db": 121.53928430097346
+    },
+    "objectives": [
+      121.53928430097346,
+      0.000592996,
+      25.505,
+      -89.7316,
+      -0.6498624706613483
+    ],
+    "missing_metrics": [],
+    "circuit_dir": "circuits/circuit_00000047",
+    "error": null
+  }
+]

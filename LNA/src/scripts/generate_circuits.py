@@ -99,7 +99,7 @@ def main():
         output_root=args.output_root,
         transistor_models=transistor_models,
         gate_networks=network_ids,
-        source_networks=network_ids,
+        source_networks=network_ids + [None],
         load_networks=network_ids,
         feedback_networks=network_ids + [None],
         network_database_path=args.network_database,

@@ -27,6 +27,7 @@ DEFAULT_LD = 5e-9
 DEFAULT_NETWORK_DATABASE_PATH = (
     REPO_ROOT / "src" / "database" / "passive_networks_mim_no_varactors.json"
 )
+OPEN_RLC_PARALLEL_IDENTIFIER = "rlc_parallel__r00__l00__c00"
 FIXED_OUTPUT_COUPLING_CAP = {
     "identifier": "fixed_output_coupling_cap",
     "model_name": "sky130_fd_pr__cap_mim_m3_2",
@@ -209,7 +210,7 @@ def write_netlist(
     Each network may be:
     - "default": keep the default element (`gate/source/load`)
     - None: short for `source_network`, open for `feedback_network`
-    - "" / "open": open circuit for `feedback_network` only
+    - "" / "open": open circuit
     - "short": near-short resistor
     - raw netlist text with `{p}` and `{n}` placeholders
 
@@ -259,6 +260,7 @@ def write_netlist(
             "gate",
             gate_network,
             default_line="LGATE gate_in gate {LG}",
+            allow_open=True,
             none_behavior="error",
         )
         fp.write("RBIAS gate vbias 1MEG\n")
@@ -270,6 +272,7 @@ def write_netlist(
             "0",
             source_network,
             default_line="LSRC source 0 {LS}",
+            allow_open=True,
             none_behavior="short",
         )
         fp.write(f"xn1 drain gate source 0 {transistor_model_name}\n")
@@ -281,6 +284,7 @@ def write_netlist(
             "drain",
             load_network,
             default_line="LLOAD vdd drain {LD}",
+            allow_open=True,
             none_behavior="error",
         )
         _write_insertion_network(
@@ -358,23 +362,6 @@ def write_netlist(
             fp.write("let zin_im_vector = imag(v(in)/(-i(VIN)))\n")
             fp.write(f"meas ac zin_im       find    zin_im_vector                     at={f0}\n")
 
-        fp.write("setplot noise1\n")
-        fp.write("let nn = 0\n")
-        fp.write("while frequency[nn] < f0\n")
-        fp.write("  let nn = nn +1\n")
-        fp.write("end\n")
-        fp.write("let fnn = frequency[nn]\n")
-        fp.write("let nn1 = nn -1\n")
-        fp.write("let fnn1 = frequency[nn1]\n")
-        fp.write("let onn = onoise_spectrum[nn]\n")
-        fp.write("let onn1 = onoise_spectrum[nn1]\n")
-        fp.write("let onoise = onn1 +(f0 - fnn1)*(onn - onn1)/(fnn - fnn1)\n")
-        fp.write('echo out_noise \t\t\t\t\t\t= "$&onoise"\n')
-        fp.write("let inn = inoise_spectrum[nn]\n")
-        fp.write("let inn1 = inoise_spectrum[nn1]\n")
-        fp.write("let inoise = inn1 +(f0 - fnn1)*(inn - inn1)/(fnn - fnn1)\n")
-        fp.write('echo in_noise \t\t\t\t\t\t= "$&inoise"\n')
-
         fp.write("setplot noise2\n")
         fp.write("print inoise_total\n")
         fp.write("print onoise_total\n")
@@ -442,6 +429,39 @@ def build_float_sweep(start, stop, step, *, ndigits=12):
     return values
 
 
+def _rlc_parallel_indexes(selection):
+    indexes = selection.get("passive_indexes") or {}
+    return {
+        "r": int(indexes.get("r", 0)),
+        "l": int(indexes.get("l", 0)),
+        "c": int(indexes.get("c", 0)),
+    }
+
+
+def _is_open_rlc_parallel(selection):
+    if not isinstance(selection, dict):
+        return False
+    if selection.get("topology") != "rlc_parallel":
+        return False
+    indexes = _rlc_parallel_indexes(selection)
+    return indexes["r"] == 0 and indexes["l"] == 0 and indexes["c"] == 0
+
+
+def _open_rlc_parallel_selection():
+    return {
+        "identifier": OPEN_RLC_PARALLEL_IDENTIFIER,
+        "topology": "rlc_parallel",
+        "netlist": "open",
+        "estimated_area_um2": 0.0,
+        "elements": [],
+        "passive_indexes": {
+            "r": 0,
+            "l": 0,
+            "c": 0,
+        },
+    }
+
+
 def resolve_network_selections(
     network_refs,
     network_index,
@@ -457,6 +477,7 @@ def resolve_network_selections(
     - identifier strings
     - None / "none" when `allow_none=True`
     - "default" when `allow_default=True`
+    - "open" / "rlc_parallel__r00__l00__c00" for an open RLC network
     """
     resolved = []
     for ref in network_refs:
@@ -483,6 +504,9 @@ def resolve_network_selections(
             if not allow_default:
                 raise ValueError("This network slot does not allow 'default'")
             resolved.append("default")
+            continue
+        if normalized in {"open", OPEN_RLC_PARALLEL_IDENTIFIER}:
+            resolved.append(_open_rlc_parallel_selection())
             continue
 
         resolved.append(network_index[ref])
@@ -534,238 +558,11 @@ def _selection_to_netlist_spec(selection):
         return None
     if selection == "default":
         return "default"
+    if _is_open_rlc_parallel(selection):
+        return "open"
     if isinstance(selection, dict):
         return selection["netlist"]
     return selection
-
-
-def _gate_network_has_series_capacitor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "series":
-        return False
-    return any(
-        element.get("element_type") == "capacitor"
-        for element in selection.get("elements", [])
-    )
-
-
-def _network_is_series_inductor_capacitor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "series":
-        return False
-    elements = selection.get("elements", [])
-    if len(elements) != 2:
-        return False
-    element_types = sorted(element.get("element_type") for element in elements)
-    return element_types == ["capacitor", "inductor"]
-
-
-def _network_has_series_capacitor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "series":
-        return False
-    return any(
-        element.get("element_type") == "capacitor"
-        for element in selection.get("elements", [])
-    )
-
-
-def _network_is_parallel_capacitor_capacitor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "parallel":
-        return False
-    elements = selection.get("elements", [])
-    return (
-        len(elements) == 2
-        and all(element.get("element_type") == "capacitor" for element in elements)
-    )
-
-
-def _network_is_capacitor_capacitor_pair(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") not in {"series", "parallel"}:
-        return False
-    elements = selection.get("elements", [])
-    return (
-        len(elements) == 2
-        and all(element.get("element_type") == "capacitor" for element in elements)
-    )
-
-
-def _network_is_inductor_inductor_pair(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") not in {"series", "parallel"}:
-        return False
-    elements = selection.get("elements", [])
-    return (
-        len(elements) == 2
-        and all(element.get("element_type") == "inductor" for element in elements)
-    )
-
-
-def _network_is_single_capacitor(selection):
-    if not isinstance(selection, dict):
-        return False
-    elements = selection.get("elements", [])
-    return (
-        selection.get("topology") == "single"
-        and len(elements) == 1
-        and elements[0].get("element_type") == "capacitor"
-    )
-
-
-def _network_is_single_inductor(selection):
-    if not isinstance(selection, dict):
-        return False
-    elements = selection.get("elements", [])
-    return (
-        selection.get("topology") == "single"
-        and len(elements) == 1
-        and elements[0].get("element_type") == "inductor"
-    )
-
-
-def _network_is_rlc_parallel(selection):
-    return isinstance(selection, dict) and selection.get("topology") == "rlc_parallel"
-
-
-def _rlc_parallel_indexes(selection):
-    indexes = selection.get("passive_indexes") or {}
-    return {
-        "r": int(indexes.get("r", 0)),
-        "l": int(indexes.get("l", 0)),
-        "c": int(indexes.get("c", 0)),
-    }
-
-
-def _network_is_series_resistor_inductor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "series":
-        return False
-    elements = selection.get("elements", [])
-    if len(elements) != 2:
-        return False
-    element_types = sorted(element.get("element_type") for element in elements)
-    return element_types == ["inductor", "resistor"]
-
-
-def _network_is_parallel_resistor_inductor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "parallel":
-        return False
-    elements = selection.get("elements", [])
-    if len(elements) != 2:
-        return False
-    element_types = sorted(element.get("element_type") for element in elements)
-    return element_types == ["inductor", "resistor"]
-
-
-def _network_is_parallel_resistor_capacitor(selection):
-    if not isinstance(selection, dict):
-        return False
-    if selection.get("topology") != "parallel":
-        return False
-    elements = selection.get("elements", [])
-    if len(elements) != 2:
-        return False
-    element_types = sorted(element.get("element_type") for element in elements)
-    return element_types == ["capacitor", "resistor"]
-
-
-def _is_valid_gate_network(selection):
-    if _network_is_rlc_parallel(selection):
-        indexes = _rlc_parallel_indexes(selection)
-        return indexes["r"] == 0 and 1 <= indexes["l"] <= 3 and indexes["c"] == 0
-    return _network_is_single_inductor(selection)
-
-
-def _is_valid_source_network(selection):
-    if _network_is_rlc_parallel(selection):
-        return True
-    return not (
-        _network_is_single_capacitor(selection)
-        or _network_is_series_resistor_inductor(selection)
-        or _network_is_parallel_resistor_inductor(selection)
-        or _network_is_parallel_resistor_capacitor(selection)
-        or _network_has_series_capacitor(selection)
-        or _network_is_inductor_inductor_pair(selection)
-        or _network_is_capacitor_capacitor_pair(selection)
-    )
-
-
-def _is_valid_load_network(selection):
-    if _network_is_rlc_parallel(selection):
-        return True
-    return not (
-        _network_is_single_capacitor(selection)
-        or _network_is_series_resistor_inductor(selection)
-        or _network_is_parallel_resistor_inductor(selection)
-        or _network_is_parallel_resistor_capacitor(selection)
-        or _network_has_series_capacitor(selection)
-        or _network_is_inductor_inductor_pair(selection)
-        or _network_is_capacitor_capacitor_pair(selection)
-    )
-
-
-def _is_valid_feedback_network(selection):
-    if selection is None:
-        return True
-    if not isinstance(selection, dict):
-        return False
-
-    elements = selection.get("elements", [])
-    if selection.get("topology") == "single" and len(elements) == 1:
-        return elements[0].get("element_type") == "capacitor"
-
-    if selection.get("topology") != "series" or len(elements) != 2:
-        return False
-
-    element_types = sorted(element.get("element_type") for element in elements)
-    return element_types == ["capacitor", "resistor"]
-
-
-def _filter_out_inductor_inductor_pairs(selections):
-    return [
-        selection
-        for selection in selections
-        if not _network_is_inductor_inductor_pair(selection)
-    ]
-
-
-def _filter_out_capacitor_capacitor_pairs(selections):
-    return [
-        selection
-        for selection in selections
-        if not _network_is_capacitor_capacitor_pair(selection)
-    ]
-
-
-def filter_gate_network_selections(selections):
-    """Keep only gate networks that are single-inductor networks."""
-    return [selection for selection in selections if _is_valid_gate_network(selection)]
-
-
-def filter_source_network_selections(selections):
-    """Remove source networks that break biasing or duplicate a larger single cap."""
-    return [selection for selection in selections if _is_valid_source_network(selection)]
-
-
-def filter_load_network_selections(selections):
-    """Remove load networks that break biasing or duplicate a larger single cap."""
-    return [selection for selection in selections if _is_valid_load_network(selection)]
-
-
-def filter_feedback_network_selections(selections):
-    """Keep only open feedback, meaning no feedback network is inserted."""
-    return [selection for selection in selections if selection is None]
 
 
 def _describe_network_selection(role, selection, *, lg, ls, ld):
@@ -818,6 +615,21 @@ def _describe_network_selection(role, selection, *, lg, ls, ld):
         return summary
 
     if isinstance(selection, dict):
+        if _is_open_rlc_parallel(selection):
+            summary = {
+                "mode": "open",
+                "identifier": selection.get("identifier", OPEN_RLC_PARALLEL_IDENTIFIER),
+                "topology": "rlc_parallel",
+                "netlist": "open",
+                "elements": [],
+                "passive_indexes": {
+                    "r": 0,
+                    "l": 0,
+                    "c": 0,
+                },
+            }
+            summary.update(_zero_estimates())
+            return summary
         summary = {
             "mode": "database",
             "identifier": selection["identifier"],
@@ -926,7 +738,7 @@ def create_circuit_bundle(
     process_lib_path="sky130A/libs.tech/ngspice/sky130.lib.spice",
     rf_include_path_template=None,
     temperature_c=27,
-    f0=2.4e9,
+    f0=5e9,
     vdd=1.8,
     ac_start="100MEG",
     ac_stop="10G",
@@ -1052,42 +864,12 @@ def generate_circuit_library(
         source_networks, network_index, allow_none=True, allow_default=True
     )
     resolved_load_networks = resolve_network_selections(
-        load_networks, network_index
+        load_networks, network_index, allow_default=True
     )
     resolved_feedback_networks = resolve_network_selections(
         feedback_networks, network_index, allow_none=True
     )
 
-    resolved_gate_networks = _filter_out_inductor_inductor_pairs(resolved_gate_networks)
-    resolved_source_networks = _filter_out_inductor_inductor_pairs(
-        resolved_source_networks
-    )
-    resolved_load_networks = _filter_out_inductor_inductor_pairs(resolved_load_networks)
-    resolved_feedback_networks = _filter_out_inductor_inductor_pairs(
-        resolved_feedback_networks
-    )
-
-    resolved_gate_networks = _filter_out_capacitor_capacitor_pairs(
-        resolved_gate_networks
-    )
-    resolved_source_networks = _filter_out_capacitor_capacitor_pairs(
-        resolved_source_networks
-    )
-    resolved_load_networks = _filter_out_capacitor_capacitor_pairs(
-        resolved_load_networks
-    )
-    resolved_feedback_networks = _filter_out_capacitor_capacitor_pairs(
-        resolved_feedback_networks
-    )
-
-    resolved_gate_networks = filter_gate_network_selections(resolved_gate_networks)
-    resolved_source_networks = filter_source_network_selections(
-        resolved_source_networks
-    )
-    resolved_load_networks = filter_load_network_selections(resolved_load_networks)
-    resolved_feedback_networks = filter_feedback_network_selections(
-        resolved_feedback_networks
-    )
     if vg_values is not None and any(
         value is not None for value in (vg_start, vg_stop, vg_step)
     ):
@@ -1107,15 +889,13 @@ def generate_circuit_library(
         resolved_vg_values = [netlist_kwargs.get("vg", 0.7)]
 
     if not resolved_gate_networks:
-        raise ValueError("No valid gate networks remain after gate-network filtering")
+        raise ValueError("No gate networks were provided")
     if not resolved_source_networks:
-        raise ValueError("No valid source networks remain after source-network filtering")
+        raise ValueError("No source networks were provided")
     if not resolved_load_networks:
-        raise ValueError("No valid load networks remain after load-network filtering")
+        raise ValueError("No load networks were provided")
     if not resolved_feedback_networks:
-        raise ValueError(
-            "No valid feedback networks remain after feedback-network filtering"
-        )
+        raise ValueError("No feedback networks were provided")
     if not resolved_vg_values:
         raise ValueError("No vg_values were provided")
 
@@ -1220,7 +1000,8 @@ def generate_circuit_library(
             for selection in resolved_source_networks
         ],
         "selected_load_networks": [
-            selection["identifier"] for selection in resolved_load_networks
+            "default" if selection == "default" else selection["identifier"]
+            for selection in resolved_load_networks
         ],
         "selected_feedback_networks": [
             None if selection is None else selection["identifier"]
@@ -1247,7 +1028,7 @@ if __name__ == "__main__":
         process_lib_path="sky130A/libs.tech/ngspice/sky130.lib.spice",
         rf_include_path_template=DEFAULT_RF_INCLUDE_PATH_TEMPLATE,
         temperature_c=27,
-        f0=2.4e9,
+        f0=5e9,
         vdd=1.8,
         ac_start="100MEG",
         ac_stop="10G",

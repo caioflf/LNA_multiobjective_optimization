@@ -18,7 +18,7 @@ ZO = 50.0
 TEMPERATURE_C = 27.0
 TEMPERATURE_K = TEMPERATURE_C + 273.15
 K_BOLTZMANN = 1.380649e-23
-DEFAULT_F0 = 2.4e9
+DEFAULT_F0 = 5e9
 DEFAULT_SIMULATION_THREADS = 8
 DEFAULT_SIMULATION_PRIORITY = "high"
 DEFAULT_PROGRESS_EVERY = 1
@@ -51,6 +51,7 @@ def _simulate_one_with_progress(
     measure_filename,
     log_filename,
     priority,
+    timeout_seconds,
 ):
     display_index = index + 1
     report = show_progress and _should_report_progress(
@@ -65,6 +66,7 @@ def _simulate_one_with_progress(
         measure_filename=measure_filename,
         log_filename=log_filename,
         priority=priority,
+        timeout_seconds=timeout_seconds,
     )
 
 
@@ -196,6 +198,7 @@ def run_circuit_simulation(
     measure_filename=DEFAULT_MEASURE_FILENAME,
     log_filename=DEFAULT_LOG_FILENAME,
     priority=DEFAULT_SIMULATION_PRIORITY,
+    timeout_seconds=None,
 ):
     """
     Run `ngspice -b` for one generated circuit folder and save parsed measures.
@@ -211,7 +214,13 @@ def run_circuit_simulation(
         text=True,
     )
     priority_status = _set_process_priority(process, priority)
-    stdout, stderr = process.communicate()
+    timed_out = False
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        process.kill()
+        stdout, stderr = process.communicate()
 
     result = subprocess.CompletedProcess(
         process.args,
@@ -228,6 +237,13 @@ def run_circuit_simulation(
         if log_text and not log_text.endswith("\n"):
             log_text += "\n"
         log_text += f"[simulate_circuits] {priority_status['message']}\n"
+    if timed_out:
+        if log_text and not log_text.endswith("\n"):
+            log_text += "\n"
+        log_text += (
+            f"[simulate_circuits] ngspice timed out after "
+            f"{timeout_seconds:g} second(s); process killed.\n"
+        )
     (circuit_dir / log_filename).write_text(log_text)
     measures = parse_measures_from_stdout(result.stdout)
 
@@ -236,10 +252,17 @@ def run_circuit_simulation(
         "returncode": result.returncode,
         "log": log_filename,
         "priority": priority_status,
+        "timeout_seconds": timeout_seconds,
+        "timed_out": timed_out,
         "measures": measures,
     }
     (circuit_dir / measure_filename).write_text(json.dumps(payload, indent=2) + "\n")
 
+    if timed_out:
+        raise TimeoutError(
+            f"ngspice timed out after {timeout_seconds:g} second(s) for "
+            f"{netlist_path.name} in {circuit_dir}"
+        )
     if result.returncode != 0:
         raise RuntimeError(f"ngspice failed for {netlist_path.name} in {circuit_dir}")
 
@@ -249,6 +272,7 @@ def run_circuit_simulation(
 def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_K):
     """Derive useful LNA metrics from the saved scalar measures."""
     gain_db = measures.get("gain_db")
+    power = measures.get("pdc")
     f_3db_low = measures.get("f_3db_low")
     f_3db_high = measures.get("f_3db_high")
     vin_re = measures.get("vin_re")
@@ -259,13 +283,21 @@ def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_
 
     derived = {}
 
+    if f_3db_low is None:
+        f_3db_low = 10e6
+
+    if f_3db_high is None:
+        f_3db_high = 10e9
+
     if gain_db is not None:
         derived["gain_db"] = gain_db
 
+    if power is not None:
+        derived["power"] = power
+
     if f_3db_low is not None and f_3db_high is not None and f0:
         bandwidth_hz = f_3db_high - f_3db_low
-        derived["bandwidth_hz"] = bandwidth_hz
-        derived["fractional_bandwidth_percent"] = 100.0 * bandwidth_hz / f0
+        derived["F_BW"] = 100.0 * bandwidth_hz / f0
 
     if None not in (vin_re, vin_im, iin_re, iin_im):
         vin = complex(vin_re, vin_im)
@@ -273,11 +305,8 @@ def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_
         if abs(iin) > 0:
             zin = vin / iin
             gamma = (zin - zo) / (zin + zo)
-            derived["zin_re"] = zin.real
-            derived["zin_im"] = zin.imag
-            derived["s11_mag"] = abs(gamma)
             if abs(gamma) > 0:
-                derived["s11_db"] = 20.0 * math.log10(abs(gamma))
+                derived["S11_db"] = 20.0 * math.log10(abs(gamma))
 
     if (
         inoise_total is not None
@@ -286,10 +315,9 @@ def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_
         and f_3db_high > f_3db_low
     ):
         bandwidth_hz = f_3db_high - f_3db_low
-        nf = inoise_total / (4 * K_BOLTZMANN * temperature_k * zo * bandwidth_hz)
+        nf = inoise_total / (4 * K_BOLTZMANN * temperature_k * zo)
         if nf > 0:
-            derived["noise_figure"] = nf
-            derived["noise_figure_db"] = 10.0 * math.log10(nf)
+            derived["NF_db"] = 10.0 * math.log10(nf)
 
     return derived
 
@@ -338,6 +366,7 @@ def simulate_circuit_library(
     log_filename=DEFAULT_LOG_FILENAME,
     show_progress=True,
     progress_every=DEFAULT_PROGRESS_EVERY,
+    timeout_seconds=None,
 ):
     """Run ngspice on all or a chosen subset of generated circuit folders."""
     if threads < 1:
@@ -358,7 +387,8 @@ def simulate_circuit_library(
         _print_progress(f"selected {total} circuit(s) from {circuits_root}")
         if total:
             _print_progress(
-                f"simulating with {threads} thread(s), priority={priority}"
+                f"simulating with {threads} thread(s), priority={priority}, "
+                f"timeout={timeout_seconds if timeout_seconds is not None else 'none'}"
             )
     if threads == 1:
         results = []
@@ -374,6 +404,7 @@ def simulate_circuit_library(
                         measure_filename=measure_filename,
                         log_filename=log_filename,
                         priority=priority,
+                        timeout_seconds=timeout_seconds,
                     )
                 )
             except Exception as exc:
@@ -405,6 +436,7 @@ def simulate_circuit_library(
                 measure_filename=measure_filename,
                 log_filename=log_filename,
                 priority=priority,
+                timeout_seconds=timeout_seconds,
             ): index
             for index, circuit_dir in enumerate(circuit_dirs)
         }
@@ -526,8 +558,15 @@ def main():
             f"(default: {DEFAULT_PROGRESS_EVERY})."
         ),
     )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        help="Kill an ngspice run after this many seconds.",
+    )
     args = parser.parse_args()
     show_progress = not args.no_progress
+    if args.timeout is not None and args.timeout <= 0:
+        raise ValueError("--timeout must be positive")
 
     if not args.analyze_only:
         simulate_circuit_library(
@@ -538,6 +577,7 @@ def main():
             priority=args.priority,
             show_progress=show_progress,
             progress_every=args.progress_every,
+            timeout_seconds=args.timeout,
         )
     analyze_circuit_library(
         args.output_root,

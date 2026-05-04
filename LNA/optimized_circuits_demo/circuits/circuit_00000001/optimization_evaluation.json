@@ -1,0 +1,109 @@
+{
+  "evaluation_id": 1,
+  "status": "ok",
+  "valid": true,
+  "genome": [
+    0,
+    0,
+    2,
+    2,
+    0,
+    1,
+    30,
+    126,
+    1
+  ],
+  "candidate": {
+    "transistor": "sky130_fd_pr__rf_nfet_01v8_bM04W1p65L0p25",
+    "transistor_available": true,
+    "transistor_indexes": {
+      "device_type_index": 0,
+      "vt_index": 0,
+      "wtot_index": 2,
+      "length_index": 2
+    },
+    "transistor_parameters": {
+      "device_type": "nmos",
+      "threshold": "standard",
+      "wtot_um": 6.6,
+      "length_um": 0.25,
+      "m": 4,
+      "unit_width_um": 1.65
+    },
+    "vg": 0.7,
+    "networks": {
+      "gate": {
+        "identifier": "rlc_parallel__r00__l02__c00",
+        "passive_indexes": {
+          "r": 0,
+          "l": 2,
+          "c": 0
+        }
+      },
+      "source": {
+        "identifier": "rlc_parallel__r01__l02__c05",
+        "passive_indexes": {
+          "r": 1,
+          "l": 2,
+          "c": 5
+        }
+      },
+      "load": {
+        "identifier": "rlc_parallel__r07__l01__c00",
+        "passive_indexes": {
+          "r": 7,
+          "l": 1,
+          "c": 0
+        }
+      },
+      "feedback": {
+        "identifier": "rlc_parallel__r00__l00__c00",
+        "passive_indexes": {
+          "r": 0,
+          "l": 0,
+          "c": 0
+        }
+      }
+    }
+  },
+  "metrics": {
+    "gain_db": -41.0577,
+    "power": 4.33689e-05,
+    "F_BW": 108.5368,
+    "S11_db": -0.49686092592953424,
+    "NF_db": 132.51853223224737
+  },
+  "objectives": [
+    132.51853223224737,
+    4.33689e-05,
+    41.0577,
+    -108.5368,
+    -0.49686092592953424
+  ],
+  "objective_specs": [
+    {
+      "name": "NF_db",
+      "direction": "min"
+    },
+    {
+      "name": "power",
+      "direction": "min"
+    },
+    {
+      "name": "gain_db",
+      "direction": "max"
+    },
+    {
+      "name": "F_BW",
+      "direction": "max"
+    },
+    {
+      "name": "S11_db",
+      "direction": "min"
+    }
+  ],
+  "missing_metrics": [],
+  "circuit_dir": "circuits/circuit_00000001",
+  "error": null,
+  "created_at_unix": 1777849637.096832
+}

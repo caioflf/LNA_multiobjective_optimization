@@ -1,0 +1,371 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * rf lna - common source with inductive degeneration
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+Warning: Source conductance reset to 1.0e3 mho.
+ Reference value :  0.00000e+00
+No. of Data Rows : 1
+idd = 6.62267E-05
+pdc = 0.000119208
+ ASRC: Arbitrary Source 
+     device b.xlload_r.brhrpoly_2      b.xlload_r.brend b.xlsrc_r.brhrpoly_0p
+      dtemp                     0                     0                     0
+          i           3.79058e-07           3.79058e-07           3.70172e-08
+          v           0.000215229           5.72482e-05           0.000205891
+   pos_node                    30                     1                    18
+   neg_node                    29                    30                     0
+
+ ASRC: Arbitrary Source 
+     device       b.xlsrc_r.brend
+      dtemp                     0
+          i           3.70172e-08
+          v           2.89077e-05
+   pos_node                    17
+   neg_node                    18
+
+ BSIM4v5: Berkeley Short Channel IGFET Model-4
+     device m.xn1.xsky130_fd_pr__ m.xn1.xsky130_fd_pr__
+      model xn1.xsky130_fd_pr__rf xn1.xsky130_fd_pr__rf
+          l               1.8e-07               1.8e-07
+          w              5.05e-06              5.05e-06
+          m                     2                     2
+         nf                     1                     1
+         sa                     0                     0
+         sb                     0                     0
+         sd                     0                     0
+        sca                     0                     0
+        scb                     0                     0
+        scc                     0                     0
+         sc                     0                     0
+        min                     0                     0
+         ad             1.515e-12              7.07e-13
+         as                     0             1.414e-12
+         pd              1.07e-05              5.33e-06
+         ps                     0             1.066e-05
+        nrd                 12.13                 24.27
+        nrs                     0                 12.13
+        off                     0                     0
+       rbdb                100000                100000
+       rbsb                100000                100000
+       rbpb                   200                   200
+       rbps                 0.001                 0.001
+       rbpd                 0.001                 0.001
+     delvto                     0                     0
+      mulu0                     1                     1
+        xgw               1.3e-06               1.3e-06
+      ngcon                     2                     2
+   trnqsmod                     0                     0
+   acnqsmod                     0                     0
+   rbodymod                     1                     1
+   rgatemod                     3                     3
+     geomod                     0                     0
+    rgeomod                     0                     0
+       gmbs            1.2187e-14           0.000145714
+         gm           4.54336e-14           0.000927213
+        gds           6.62294e-12           2.93492e-05
+      vdsat             0.0414147             0.0708716
+        vth              0.717873              0.700397
+         id           1.55902e-15           6.61962e-05
+        ibd           8.31399e-26          -3.59944e-12
+        ibs          -6.09526e-16          -2.94441e-15
+        gbd            2.3124e-12                 2e-12
+        gbs           2.59386e-12           2.28863e-12
+       isub            3.7484e-34           3.04836e-08
+      igidl                     0                     0
+      igisl                     0                     0
+        igs                     0                     0
+        igd                     0                     0
+        igb                     0                     0
+       igcs                     0                     0
+       igcd                     0                     0
+        vbs          -0.000234799           -0.00128339
+        vgs          -0.000234799              0.698714
+        vds          -0.000234799               1.79698
+        cgg           3.01355e-15           5.71806e-15
+        cgs          -3.93498e-18          -4.33733e-15
+        cgd           -3.3416e-23           3.54882e-17
+        cbg          -3.01355e-15          -7.19521e-16
+        cbd          -5.46237e-24           1.37633e-17
+        cbs           3.93496e-18          -1.68115e-15
+        cdg           -2.3385e-23          -1.99968e-15
+        cdd           2.60219e-23          -1.96821e-17
+        cds           4.22297e-24           2.40769e-15
+        csg          -2.34761e-23          -2.99886e-15
+        csd           1.28564e-23          -2.95694e-17
+        css           1.75111e-23            3.6108e-15
+        cgb          -3.00961e-15          -1.41622e-15
+        cdb          -6.85994e-24          -3.88328e-16
+        csb          -6.89141e-24          -5.82366e-16
+        cbb           3.00961e-15           2.38691e-15
+      capbd           1.26447e-14           5.16301e-15
+      capbs             3.102e-15           1.21434e-14
+         qg           2.54867e-15           4.53594e-15
+         qb          -2.54867e-15          -4.16142e-15
+         qd          -8.02303e-25          -1.49826e-16
+         qs          -8.05431e-25          -2.24692e-16
+       qinv                     0                     0
+       qdef                     0                     0
+       gcrg            0.00958311             0.0191155
+       gtau                     0                     0
+    vgsteff           6.31619e-10              0.042818
+     vdseff           0.000133397             0.0696071
+       cgso           3.47268e-15           3.50865e-15
+       cgdo           3.80261e-15           3.45034e-15
+       cgbo                     0                     0
+       weff           5.03164e-06           5.03164e-06
+       leff            2.3878e-07            2.3878e-07
+
+ Capacitor: Fixed capacitor
+     device          c.xoutcap.c1         c.xlload_c.c1        c.xlload_l.c25
+      model                     C                     C                     C
+capacitance           2.06582e-13           1.33262e-13             2.237e-13
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+          i                     0                     0                     0
+          p                     0                     0                     0
+
+ Capacitor: Fixed capacitor
+     device        c.xlload_l.c24         c.xlload_l.c2         c.xlload_r.c2
+      model                     C                     C                     C
+capacitance              2.05e-13             2.237e-13           2.14745e-15
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+          i                     0                     0                     0
+          p                     0                     0                     0
+
+ Capacitor: Fixed capacitor
+     device         c.xlload_r.c1          c.xlsrc_c.c1          c.xlsrc_l.c1
+      model                     C                     C                     C
+capacitance           2.14745e-15           2.06582e-13              3.57e-13
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+          i                     0                     0                     0
+          p                     0                     0                     0
+
+ Capacitor: Fixed capacitor
+     device         c.xlsrc_l.c25         c.xlsrc_l.c24          c.xlsrc_r.c2
+      model                     C                     C                     C
+capacitance              3.57e-13             1.031e-13           6.49222e-16
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+          i                     0                     0                     0
+          p                     0                     0                     0
+
+ Capacitor: Fixed capacitor
+     device          c.xlsrc_r.c1        c.xlgate_l.c25        c.xlgate_l.c24
+      model                     C                     C                     C
+capacitance           6.49222e-16             2.237e-13              2.05e-13
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+          i                     0                     0                     0
+          p                     0                     0                    -0
+
+ Capacitor: Fixed capacitor
+     device         c.xlgate_l.c2           c.xincap.c1
+      model                     C                     C
+capacitance             2.237e-13           2.06582e-13
+      dtemp                     0                     0
+     bv_max                 1e+99                 1e+99
+          i                     0                     0
+          p                     0                    -0
+
+ Inductor: Fixed inductor
+     device         l.xlload_l.l3         l.xlload_l.l1          l.xlsrc_l.l2
+      model                     L                     L                     L
+ inductance              4.96e-09              4.96e-09             2.895e-09
+      dtemp                     0                     0                     0
+         nt                     0                     0                     0
+       flux                     0                     0                     0
+          v                     0                     0                     0
+          i           6.58476e-05           6.58476e-05           6.61592e-05
+          p                     0                     0                     0
+
+ Inductor: Fixed inductor
+     device          l.xlsrc_l.l1         l.xlgate_l.l3         l.xlgate_l.l1
+      model                     L                     L                     L
+ inductance             2.895e-09              4.96e-09              4.96e-09
+      dtemp                     0                     0                     0
+         nt                     0                     0                     0
+       flux                     0                     0                     0
+          v                     0                     0                     0
+          i           6.61592e-05          -2.79387e-14          -2.79387e-14
+          p                     0                    -0                    -0
+
+ Resistor: Simple linear resistor
+     device                 rload         r.xoutcap.rs2         r.xoutcap.rs1
+      model                     R                     R                     R
+ resistance                    50            0.00203518                 0.047
+         ac                    50            0.00203518                 0.047
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0                     0                     0
+          p                     0                     0                     0
+
+ Resistor: Simple linear resistor
+     device        r.xlload_c.rs2        r.xlload_c.rs1         r.xlload_l.r9
+      model                     R                     R                     R
+ resistance            0.00318396                 0.047                 2.059
+         ac            0.00318396                 0.047                 2.059
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0                     0           6.58476e-05
+          p                     0                     0           8.92763e-09
+
+ Resistor: Simple linear resistor
+     device        r.xlload_l.r10        r.xlload_l.r13         r.xlload_l.r4
+      model                     R                     R                     R
+ resistance                  5358                 9.064                 2.059
+         ac                  5358                 9.064                 2.059
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0                     0           6.58476e-05
+          p                     0                     0           8.92763e-09
+
+ Resistor: Simple linear resistor
+     device         r.xlload_l.r5        r.xlload_l.r26        r.xlload_l.r31
+      model                     R                     R                     R
+ resistance                  5358                  0.01                  0.01
+         ac                  5358                  0.01                  0.01
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0           6.58476e-05           6.58476e-05
+          p                     0           4.33591e-11           4.33591e-11
+
+ Resistor: Simple linear resistor
+     device         r.xlsrc_c.rs2         r.xlsrc_c.rs1          r.xlsrc_l.r9
+      model                     R                     R                     R
+ resistance            0.00203518                 0.047                1.7645
+         ac            0.00203518                 0.047                1.7645
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0                     0           6.61592e-05
+          p                     0                     0           7.72328e-09
+
+ Resistor: Simple linear resistor
+     device         r.xlsrc_l.r10         r.xlsrc_l.r13          r.xlsrc_l.r2
+      model                     R                     R                     R
+ resistance                  3670                 9.312                1.7645
+         ac                  3670                 9.312                1.7645
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0                     0           6.61592e-05
+          p                     0                     0           7.72328e-09
+
+ Resistor: Simple linear resistor
+     device          r.xlsrc_l.r3         r.xlsrc_l.r26         r.xlsrc_l.r31
+      model                     R                     R                     R
+ resistance                  3670                  0.01                  0.01
+         ac                  3670                  0.01                  0.01
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0           6.61592e-05           6.61592e-05
+          p                     0           4.37703e-11           4.37703e-11
+
+ Resistor: Simple linear resistor
+     device                 rbias         r.xlgate_l.r9        r.xlgate_l.r10
+      model                     R                     R                     R
+ resistance                 1e+06                 2.059                  5358
+         ac                 1e+06                 2.059                  5358
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i          -2.66325e-14          -2.79847e-14                     0
+          p            7.0929e-22            1.6125e-27                     0
+
+ Resistor: Simple linear resistor
+     device        r.xlgate_l.r13         r.xlgate_l.r4         r.xlgate_l.r5
+      model                     R                     R                     R
+ resistance                 9.064                 2.059                  5358
+         ac                 9.064                 2.059                  5358
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i                     0          -2.79308e-14                     0
+          p                     0           1.60629e-27                     0
+
+ Resistor: Simple linear resistor
+     device        r.xlgate_l.r26        r.xlgate_l.r31          r.xincap.rs2
+      model                     R                     R                     R
+ resistance                  0.01                  0.01            0.00203518
+         ac                  0.01                  0.01            0.00203518
+      dtemp                     0                     0                     0
+     bv_max                 1e+99                 1e+99                 1e+99
+      noisy                     1                     1                     1
+          i          -3.33067e-14          -3.33067e-14                     0
+          p           1.10934e-29           1.10934e-29                     0
+
+ Resistor: Simple linear resistor
+     device          r.xincap.rs1               rsource
+      model                     R                     R
+ resistance                 0.047                    50
+         ac                 0.047                    50
+      dtemp                     0                     0
+     bv_max                 1e+99                 1e+99
+      noisy                     1                     1
+          i                     0                     0
+          p                     0                     0
+
+ Vsource: Independent voltage source
+     device                   vin                 vbias                   vdd
+         dc                     0                   0.7                   1.8
+      acmag                     1                     0                     0
+      pulse         -         -         -
+        sin         -         -         -
+        exp         -         -         -
+        pwl         -         -         -
+       sffm         -         -         -
+         am         -         -         -
+    trnoise         -         -         -
+   trrandom         -         -         -
+    portnum                     0                     0                     0
+         z0                     0                     0                     0
+        pwr                     0                     0                     0
+       freq                     0                     0                     0
+      phase                     0                     0                     0
+          i                     0          -2.66325e-14          -6.62267e-05
+          p                     0          -1.86427e-14          -0.000119208
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+Warning: Source conductance reset to 1.0e3 mho.
+
+No. of Data Rows : 401
+gain_db             =  -3.63340e+01
+f_3db_low           =  1.39630e+09
+f_3db_high          =  3.44693e+09
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+Warning: Source conductance reset to 1.0e3 mho.
+
+No. of Data Rows : 79
+
+No. of Data Rows : 1
+vin_re              =  9.84913e-01
+vin_im              =  -1.68890e-02
+iin_re              =  -3.01738e-04
+iin_im              =  -3.37781e-04
+vout_re             =  -1.50106e-02
+vout_im             =  6.07997e-04
+vin_mag             =  9.85058e-01
+iin_mag             =  4.52926e-04
+vout_mag            =  1.50232e-02
+zin_re              =  1.42092e+03
+zin_im              =  -1.64657e+03
+inoise_total = 2.657542e-06
+onoise_total = 1.533213e-09
+Note: Simulation executed from .control section 
+[simulate_circuits] could not set process priority to high (nice -10): [Errno 13] Permission denied

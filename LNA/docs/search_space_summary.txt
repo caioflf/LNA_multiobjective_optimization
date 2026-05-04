@@ -4,8 +4,8 @@ Search Space Summary
 This file documents the circuit search-space calculation in three views:
 
 1. Before everything: historical broad VPP-only passive baseline.
-2. Before circuit constraints: current MIM-only passive database.
-3. Now: current generated circuit space after all active constraints.
+2. Current passive database.
+3. Current generated circuit space with only structural netlist constraints.
 
 
 1. Transistor and Bias Sweep
@@ -73,8 +73,8 @@ Across 36 NMOS + NMOS_LVT models, with VG sweep:
   1,024,368,672,348 x 36 = 36,877,272,204,528
 
 
-3. Before Circuit Constraints: Current Passive Database
--------------------------------------------------------
+3. Current Passive Database
+---------------------------
 
 Current database file:
 
@@ -82,107 +82,59 @@ Current database file:
 
 Current passive pool:
 
-- capacitors: 4 MIM capacitors
+- topology: one optional R branch, one optional L branch, and one optional C branch in parallel
+- index 0 means the branch is absent
+- R choices: 10 sized poly resistors + index 0
+- L choices: 3 RF inductors + index 0
+- C choices: 5 MIM capacitors + index 0
 - capacitor model: sky130_fd_pr__cap_mim_m3_2
-- capacitor sizes: 2x2, 4x4, 6x6, 8x8 um
+- capacitor sizes: 2x2, 4x4, 6x6, 8x8, 10x10 um
 - capacitor multiplier: mf=1
-- inductors: 3 RF inductors
-- resistors: 3 selected sized poly resistors
-- resistor selection:
-  sort the previous 5 selected resistors by nominal resistance and remove positions 2 and 4
 - varactors: excluded
-- maximum resistors per network: 1
-- maximum passive elements per network: 2
-- allowed passive-network topologies:
-  single, series pair, parallel pair
 
 Current passive-network count:
 
-- single networks: 4 + 3 + 3 = 10
-- 2-element series networks:
-  C-C = C(4+1,2) = 10
-  L-L = C(3+1,2) = 6
-  R-R = 0
-  C-L = 4 x 3 = 12
-  R-C = 3 x 4 = 12
-  R-L = 3 x 3 = 9
-  total series = 49
-- 2-element parallel networks: 49
-- total networks: 10 + 49 + 49 = 108
+  (10 + 1) x (3 + 1) x (5 + 1) = 264
 
-Insertion-point counts before circuit-role filtering:
+The all-zero network is included:
 
-- gate_network: 108
-- source_network: 109
-  108 database networks + 1 short option
-- load_network: 108
-- feedback_network: 109
-  108 database networks + 1 open option
+  rlc_parallel__r00__l00__c00
 
-Per transistor model, without VG sweep:
-
-  108 x 109 x 108 x 109 = 138,579,984
-
-Per transistor model, with default 7-point VG sweep:
-
-  138,579,984 x 7 = 970,059,888
-
-Across 18 standard NMOS models, with VG sweep:
-
-  970,059,888 x 18 = 17,461,077,984
-
-Across 36 NMOS + NMOS_LVT models, with VG sweep:
-
-  970,059,888 x 36 = 34,922,155,968
+It emits no insertion element and represents an open circuit.
 
 
-4. Active Circuit Constraints
------------------------------
+4. Active Netlist-Generator Constraints
+---------------------------------------
 
-Global removals before role-specific filtering:
-
-- remove every L-L pair
-- remove every C-C pair
-- networks after these global removals:
-  108 - 6 series L-L - 6 parallel L-L - 10 series C-C - 10 parallel C-C = 76
+There is no role-specific passive topology filtering in the netlist generator.
+Topology constraints are expected to live in the optimization script.
 
 Gate network:
 
-- must come from the passive database
-- must contain exactly one inductor
-- allowed topology: single L
-- a fixed input coupling capacitor is inserted before the gate inductor
+- may come from the passive database
+- may be "default"
+- None is not allowed
+- all-zero RLC means open
 
 Source network:
 
-- may come from the passive database or be None
+- may come from the passive database
+- may be "default"
 - None means short
-- single C is not allowed
-- series R-L is not allowed
-- parallel R-L is not allowed
-- parallel R-C is not allowed
-- any series network containing a capacitor is not allowed
-- any C-C network is not allowed
-- any L-L network is not allowed
-- allowed topologies: R, L, parallel L-C, short
+- all-zero RLC means open
 
 Load network:
 
-- must come from the passive database
-- single C is not allowed
-- series R-L is not allowed
-- parallel R-L is not allowed
-- parallel R-C is not allowed
-- any series network containing a capacitor is not allowed
-- any C-C network is not allowed
-- any L-L network is not allowed
-- allowed topologies: R, L, parallel L-C
+- may come from the passive database
+- may be "default"
+- None is not allowed
+- all-zero RLC means open
 
 Feedback network:
 
-- fixed to None
+- may come from the passive database
 - None means open
-- no feedback network is inserted
+- all-zero RLC means open
 
 Fixed circuit elements still present:
 
@@ -196,80 +148,44 @@ Fixed circuit elements still present:
   This fixed output capacitor is not part of the optimization database.
 
 
-5. Now: Current Constrained Counts
-----------------------------------
+5. Current Unfiltered Counts
+----------------------------
 
-Filtered insertion-point counts:
+If all current database networks are passed to every role:
 
-- gate_network: 3
-- source_network: 19
-- load_network: 18
-- feedback_network: 1
-
-Gate:
-
-- single L
-- 3 inductors = 3
-
-Source:
-
-- single R: 3
-- single L: 3
-- parallel L-C: 3 x 4 = 12
-- short: 1
-- total: 3 + 3 + 12 + 1 = 19
-
-Load:
-
-- single R: 3
-- single L: 3
-- parallel L-C: 3 x 4 = 12
-- total: 3 + 3 + 12 = 18
-
-Feedback:
-
-- open: 1
-- total: 1
+- gate_network: 264
+- source_network: 265
+  264 database networks + 1 None/short option
+- load_network: 264
+- feedback_network: 265
+  264 database networks + 1 None/open option
 
 Per transistor model, without VG sweep:
 
-  3 x 19 x 18 x 1 = 1,026
+  264 x 265 x 264 x 265 = 4,894,401,600
 
 Per transistor model, with default 7-point VG sweep:
 
-  1,026 x 7 = 7,182
+  4,894,401,600 x 7 = 34,260,811,200
 
 Across 18 standard NMOS models, with VG sweep:
 
-  7,182 x 18 = 129,276
+  34,260,811,200 x 18 = 616,694,601,600
 
 Across 18 NMOS_LVT models, with VG sweep:
 
-  7,182 x 18 = 129,276
+  34,260,811,200 x 18 = 616,694,601,600
 
 Across 36 NMOS + NMOS_LVT models, with VG sweep:
 
-  7,182 x 36 = 258,552
+  34,260,811,200 x 36 = 1,233,389,203,200
 
 
 6. Reduction Factors
 --------------------
 
-Current passive database before role constraints to current constrained space:
-
-- without VG sweep:
-  138,579,984 / 1,026 ~= 135,068.21
-
-- with VG sweep and the same transistor set:
-  same factor, because VG and transistor counts multiply both spaces equally
-
-Historical broad baseline to current constrained space:
-
-- without VG sweep:
-  146,338,381,764 / 1,026 ~= 142,630,001.72
-
-- with VG sweep and the same transistor set:
-  same factor, because VG and transistor counts multiply both spaces equally
+No current reduction factor is applied inside the netlist generator. The
+optimization script is responsible for constraining the search space.
 
 
 7. Current Make Commands
@@ -279,13 +195,9 @@ Generate the current passive-network database:
 
   make generate-passive-network-multiobjective
 
-Generate a limited circuit set:
+Run NGSA-IV optimization:
 
-  make generate-circuits MAX_CIRCUITS=10
-
-Generate and simulate a limited circuit set:
-
-  make generate-and-simulate-circuits MAX_CIRCUITS=10 SIM_MAX_CIRCUITS=10
+  make optimize-circuits OPT_POPULATION_SIZE=24 OPT_GENERATIONS=10
 
 Simulate already generated circuits:
 

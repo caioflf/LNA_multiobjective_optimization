@@ -1,0 +1,262 @@
+{
+  "circuit_index": 2,
+  "circuit_title": "RF LNA - Common Source with Inductive Degeneration",
+  "transistor": {
+    "name": "sky130_fd_pr__rf_nfet_01v8_lvt_bM04W3p00L0p15",
+    "device_type": "nmos",
+    "threshold": "lvt",
+    "fingers": 4,
+    "width_um": 3.0,
+    "length_um": 0.15
+  },
+  "networks": {
+    "gate": {
+      "mode": "database",
+      "identifier": "rlc_parallel__r00__l01__c00",
+      "topology": "rlc_parallel",
+      "netlist": "X{name}_l {p} {n} {name}_l_ct 0 sky130_fd_pr__ind_03_90",
+      "elements": [
+        {
+          "identifier": "sky130_fd_pr__ind_03_90",
+          "model_name": "sky130_fd_pr__ind_03_90",
+          "element_type": "inductor",
+          "family": "spiral_inductor",
+          "area_um2": 8100.0,
+          "netlist_template": "X{name} {p} {n} {name}_ct 0 sky130_fd_pr__ind_03_90",
+          "nominal_resistance_ohm": null,
+          "nominal_capacitance_f": null,
+          "nominal_inductance_h": 1.521e-09,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "l",
+          "passive_index": 1
+        }
+      ],
+      "passive_indexes": {
+        "r": 0,
+        "l": 1,
+        "c": 0
+      },
+      "estimated_area_um2": 8100.0,
+      "estimated_resistance_ohm": 0.0,
+      "estimated_capacitance_f": 0.0,
+      "estimated_inductance_h": 1.521e-09,
+      "tunable_capacitance_min_f": 0.0,
+      "tunable_capacitance_max_f": 0.0
+    },
+    "source": {
+      "mode": "database",
+      "identifier": "rlc_parallel__r01__l01__c05",
+      "topology": "rlc_parallel",
+      "netlist": "X{name}_r {p} {n} 0 sky130_fd_pr__res_high_po_0p35\nX{name}_l {p} {n} {name}_l_ct 0 sky130_fd_pr__ind_03_90\nX{name}_c {p} {n} sky130_fd_pr__cap_mim_m3_2 w=10 l=10 mf=1",
+      "elements": [
+        {
+          "identifier": "sky130_fd_pr__res_high_po_0p35",
+          "model_name": "sky130_fd_pr__res_high_po_0p35",
+          "element_type": "resistor",
+          "family": "high_po",
+          "area_um2": 1.75,
+          "netlist_template": "X{name} {p} {n} 0 sky130_fd_pr__res_high_po_0p35",
+          "nominal_resistance_ohm": 1405.02,
+          "nominal_capacitance_f": null,
+          "nominal_inductance_h": null,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "r",
+          "passive_index": 1
+        },
+        {
+          "identifier": "sky130_fd_pr__ind_03_90",
+          "model_name": "sky130_fd_pr__ind_03_90",
+          "element_type": "inductor",
+          "family": "spiral_inductor",
+          "area_um2": 8100.0,
+          "netlist_template": "X{name} {p} {n} {name}_ct 0 sky130_fd_pr__ind_03_90",
+          "nominal_resistance_ohm": null,
+          "nominal_capacitance_f": null,
+          "nominal_inductance_h": 1.521e-09,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "l",
+          "passive_index": 1
+        },
+        {
+          "identifier": "sky130_fd_pr__cap_mim_m3_2__w10_l10_mf1",
+          "model_name": "sky130_fd_pr__cap_mim_m3_2",
+          "element_type": "capacitor",
+          "family": "mim",
+          "area_um2": 100,
+          "netlist_template": "X{name} {p} {n} sky130_fd_pr__cap_mim_m3_2 w=10 l=10 mf=1",
+          "nominal_resistance_ohm": null,
+          "nominal_capacitance_f": 2.0760000000000004e-13,
+          "nominal_inductance_h": null,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "c",
+          "passive_index": 5
+        }
+      ],
+      "passive_indexes": {
+        "r": 1,
+        "l": 1,
+        "c": 5
+      },
+      "estimated_area_um2": 8201.75,
+      "estimated_resistance_ohm": 1405.02,
+      "estimated_capacitance_f": 2.0760000000000004e-13,
+      "estimated_inductance_h": 1.521e-09,
+      "tunable_capacitance_min_f": 0.0,
+      "tunable_capacitance_max_f": 0.0
+    },
+    "load": {
+      "mode": "database",
+      "identifier": "rlc_parallel__r06__l03__c04",
+      "topology": "rlc_parallel",
+      "netlist": "X{name}_r {p} {n} 0 sky130_fd_pr__res_xhigh_po_5p73\nX{name}_l {p} {n} {name}_l_ct 0 sky130_fd_pr__ind_05_220\nX{name}_c {p} {n} sky130_fd_pr__cap_mim_m3_2 w=8 l=8 mf=1",
+      "elements": [
+        {
+          "identifier": "sky130_fd_pr__res_xhigh_po_5p73",
+          "model_name": "sky130_fd_pr__res_xhigh_po_5p73",
+          "element_type": "resistor",
+          "family": "xhigh_po",
+          "area_um2": 28.650000000000002,
+          "netlist_template": "X{name} {p} {n} 0 sky130_fd_pr__res_xhigh_po_5p73",
+          "nominal_resistance_ohm": 1822.2503236205148,
+          "nominal_capacitance_f": null,
+          "nominal_inductance_h": null,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "r",
+          "passive_index": 6
+        },
+        {
+          "identifier": "sky130_fd_pr__ind_05_220",
+          "model_name": "sky130_fd_pr__ind_05_220",
+          "element_type": "inductor",
+          "family": "spiral_inductor",
+          "area_um2": 48400.0,
+          "netlist_template": "X{name} {p} {n} {name}_ct 0 sky130_fd_pr__ind_05_220",
+          "nominal_resistance_ohm": null,
+          "nominal_capacitance_f": null,
+          "nominal_inductance_h": 9.92e-09,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "l",
+          "passive_index": 3
+        },
+        {
+          "identifier": "sky130_fd_pr__cap_mim_m3_2__w8_l8_mf1",
+          "model_name": "sky130_fd_pr__cap_mim_m3_2",
+          "element_type": "capacitor",
+          "family": "mim",
+          "area_um2": 64,
+          "netlist_template": "X{name} {p} {n} sky130_fd_pr__cap_mim_m3_2 w=8 l=8 mf=1",
+          "nominal_resistance_ohm": null,
+          "nominal_capacitance_f": 1.3408000000000002e-13,
+          "nominal_inductance_h": null,
+          "tunable_capacitance_min_f": null,
+          "tunable_capacitance_max_f": null,
+          "passive_axis": "c",
+          "passive_index": 4
+        }
+      ],
+      "passive_indexes": {
+        "r": 6,
+        "l": 3,
+        "c": 4
+      },
+      "estimated_area_um2": 48492.65,
+      "estimated_resistance_ohm": 1822.2503236205148,
+      "estimated_capacitance_f": 1.3408000000000002e-13,
+      "estimated_inductance_h": 9.92e-09,
+      "tunable_capacitance_min_f": 0.0,
+      "tunable_capacitance_max_f": 0.0
+    },
+    "feedback": {
+      "mode": "open",
+      "identifier": null,
+      "topology": "open",
+      "netlist": null,
+      "elements": [],
+      "estimated_area_um2": 0.0,
+      "estimated_resistance_ohm": 0.0,
+      "estimated_capacitance_f": 0.0,
+      "estimated_inductance_h": 0.0,
+      "tunable_capacitance_min_f": 0.0,
+      "tunable_capacitance_max_f": 0.0
+    }
+  },
+  "estimated_passive_totals": {
+    "estimated_area_um2": 64794.4,
+    "estimated_resistance_ohm": 3227.270323620515,
+    "estimated_capacitance_f": 3.4168000000000006e-13,
+    "estimated_inductance_h": 1.2962e-08,
+    "tunable_capacitance_min_f": 0.0,
+    "tunable_capacitance_max_f": 0.0
+  },
+  "estimated_fixed_totals": {
+    "estimated_area_um2": 200.0,
+    "estimated_resistance_ohm": 0.0,
+    "estimated_capacitance_f": 4.152000000000001e-13,
+    "estimated_inductance_h": 0.0,
+    "tunable_capacitance_min_f": 0.0,
+    "tunable_capacitance_max_f": 0.0
+  },
+  "estimated_circuit_totals": {
+    "estimated_area_um2": 64994.4,
+    "estimated_resistance_ohm": 3227.270323620515,
+    "estimated_capacitance_f": 7.568800000000001e-13,
+    "estimated_inductance_h": 1.2962e-08,
+    "tunable_capacitance_min_f": 0.0,
+    "tunable_capacitance_max_f": 0.0
+  },
+  "fixed_passives": {
+    "input_coupling_cap": {
+      "identifier": "fixed_input_coupling_cap",
+      "model_name": "sky130_fd_pr__cap_mim_m3_2",
+      "family": "mim",
+      "pin_order": [
+        "c0",
+        "c1"
+      ],
+      "width_um": 10,
+      "length_um": 10,
+      "mf": 1,
+      "area_um2": 100,
+      "nominal_capacitance_f": 2.0760000000000004e-13
+    },
+    "output_coupling_cap": {
+      "identifier": "fixed_output_coupling_cap",
+      "model_name": "sky130_fd_pr__cap_mim_m3_2",
+      "family": "mim",
+      "pin_order": [
+        "c0",
+        "c1"
+      ],
+      "width_um": 10,
+      "length_um": 10,
+      "mf": 1,
+      "area_um2": 100,
+      "nominal_capacitance_f": 2.0760000000000004e-13
+    }
+  },
+  "generation_parameters": {
+    "vg": 1.0,
+    "lg": 5e-09,
+    "ls": 1e-09,
+    "ld": 5e-09,
+    "corner": "tt",
+    "pdk_root": "$PDK_ROOT",
+    "process_lib_path": "sky130A/libs.tech/ngspice/sky130.lib.spice",
+    "temperature_c": 27,
+    "f0": 5000000000.0,
+    "vdd": 1.8,
+    "ac_start": "100MEG",
+    "ac_stop": "10G",
+    "print_useful_data": true
+  },
+  "files": {
+    "netlist": "c00000002__nmos_lvt__vg_1_0.cir",
+    "metadata": "metadata.json"
+  }
+}

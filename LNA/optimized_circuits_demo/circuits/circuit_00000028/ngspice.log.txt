@@ -1,0 +1,14 @@
+
+Note: No compatibility mode selected!
+
+
+Circuit: * rf lna - common source with inductive degeneration
+
+Error: unknown subckt: xn1 drain gate source 0 sky130_fd_pr__rf_nfet_01v8_lvt_bm04w1p65l0p15
+    in line no. 26 from file c00000028__nmos_lvt__vg_1_0.cir
+    Simulation interrupted due to error!
+
+Error: incomplete or empty netlist
+       or no ".plot", ".print", or ".fourier" lines in batch mode;
+no simulations run!
+[simulate_circuits] could not set process priority to high (nice -10): [Errno 13] Permission denied

@@ -1,0 +1,105 @@
+{
+  "evaluation_id": 47,
+  "status": "ok",
+  "valid": true,
+  "genome": [
+    0,
+    0,
+    3,
+    2,
+    2,
+    1,
+    5,
+    106,
+    0
+  ],
+  "candidate": {
+    "transistor": "sky130_fd_pr__rf_nfet_01v8_bM02W5p00L0p25",
+    "transistor_available": true,
+    "transistor_indexes": {
+      "device_type_index": 0,
+      "vt_index": 0,
+      "wtot_index": 3,
+      "length_index": 2
+    },
+    "transistor_parameters": {
+      "device_type": "nmos",
+      "threshold": "standard",
+      "wtot_um": 10.0,
+      "length_um": 0.25,
+      "m": 2,
+      "unit_width_um": 5.0
+    },
+    "vg": 0.9,
+    "networks": {
+      "gate": {
+        "identifier": "rlc_parallel__r00__l02__c00",
+        "passive_indexes": {
+          "r": 0,
+          "l": 2,
+          "c": 0
+        }
+      },
+      "source": {
+        "identifier": "rlc_parallel__r00__l01__c04",
+        "passive_indexes": {
+          "r": 0,
+          "l": 1,
+          "c": 4
+        }
+      },
+      "load": {
+        "identifier": "rlc_parallel__r05__l03__c04",
+        "passive_indexes": {
+          "r": 5,
+          "l": 3,
+          "c": 4
+        }
+      },
+      "feedback": {
+        "identifier": null,
+        "passive_indexes": null
+      }
+    }
+  },
+  "metrics": {
+    "gain_db": -25.505,
+    "power": 0.000592996,
+    "F_BW": 89.7316,
+    "S11_db": -0.6498624706613483,
+    "NF_db": 121.53928430097346
+  },
+  "objectives": [
+    121.53928430097346,
+    0.000592996,
+    25.505,
+    -89.7316,
+    -0.6498624706613483
+  ],
+  "objective_specs": [
+    {
+      "name": "NF_db",
+      "direction": "min"
+    },
+    {
+      "name": "power",
+      "direction": "min"
+    },
+    {
+      "name": "gain_db",
+      "direction": "max"
+    },
+    {
+      "name": "F_BW",
+      "direction": "max"
+    },
+    {
+      "name": "S11_db",
+      "direction": "min"
+    }
+  ],
+  "missing_metrics": [],
+  "circuit_dir": "circuits/circuit_00000047",
+  "error": null,
+  "created_at_unix": 1777850529.108107
+}

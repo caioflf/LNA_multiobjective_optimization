@@ -1,0 +1,13 @@
+{
+  "netlist": "c00000003__nmos_lvt__vg_1_0.cir",
+  "returncode": 1,
+  "log": "ngspice.log.txt",
+  "priority": {
+    "requested": "high",
+    "applied": false,
+    "message": "could not set process priority to high (nice -10): [Errno 13] Permission denied"
+  },
+  "timeout_seconds": 120.0,
+  "timed_out": false,
+  "measures": {}
+}

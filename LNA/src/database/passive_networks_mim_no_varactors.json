@@ -286,6 +286,18 @@
   },
   "networks": [
     {
+      "identifier": "rlc_parallel__r00__l00__c00",
+      "topology": "rlc_parallel",
+      "netlist": "open",
+      "estimated_area_um2": 0.0,
+      "elements": [],
+      "passive_indexes": {
+        "r": 0,
+        "l": 0,
+        "c": 0
+      }
+    },
+    {
       "identifier": "rlc_parallel__r00__l00__c01",
       "topology": "rlc_parallel",
       "netlist": "X{name}_c {p} {n} sky130_fd_pr__cap_mim_m3_2 w=2 l=2 mf=1",

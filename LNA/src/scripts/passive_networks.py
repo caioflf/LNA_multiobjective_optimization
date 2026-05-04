@@ -330,7 +330,18 @@ def _rlc_parallel_network(
         if element is not None
     ]
     if not instantiated:
-        raise ValueError("RLC parallel network requires at least one instantiated element")
+        return PassiveNetworkChoice(
+            identifier="rlc_parallel__r00__l00__c00",
+            topology="rlc_parallel",
+            netlist="open",
+            estimated_area_um2=0.0,
+            elements=[],
+            passive_indexes={
+                "r": r_index,
+                "l": l_index,
+                "c": c_index,
+            },
+        )
 
     netlist = "\n".join(
         element.instantiate("{p}", "{n}", axis)
@@ -365,7 +376,7 @@ def generate_rlc_parallel_network_library(
     mf_values=DEFAULT_MF_VALUES,
     poly_resistor_selection="alternating5",
 ) -> tuple[list[PassiveNetworkChoice], dict]:
-    """Generate all parallel R/L/C networks with zero meaning branch absent."""
+    """Generate all parallel R/L/C networks; index 0 means absent, all-zero is open."""
     elements = build_passive_element_choices(
         include_varactors=include_varactors,
         mim_model_names=mim_model_names,
@@ -408,8 +419,6 @@ def generate_rlc_parallel_network_library(
         (l_index, inductor),
         (c_index, capacitor),
     ) in product(indexed_resistors, indexed_inductors, indexed_capacitors):
-        if r_index == 0 and l_index == 0 and c_index == 0:
-            continue
         networks.append(
             _rlc_parallel_network(
                 r_index,

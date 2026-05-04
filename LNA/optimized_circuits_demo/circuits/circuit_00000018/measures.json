@@ -1,0 +1,36 @@
+{
+  "netlist": "c00000018__nmos__vg_0_7.cir",
+  "returncode": 0,
+  "log": "ngspice.log.txt",
+  "priority": {
+    "requested": "high",
+    "applied": false,
+    "message": "could not set process priority to high (nice -10): [Errno 13] Permission denied"
+  },
+  "timeout_seconds": 120.0,
+  "timed_out": false,
+  "measures": {
+    "idd": 2.40938e-05,
+    "pdc": 4.33689e-05,
+    "gain_db": -40.5974,
+    "f_3db_low": 4431330000.0,
+    "f_3db_high": 6459710000.0,
+    "vin_re": 0.967289,
+    "vin_im": -0.0174531,
+    "iin_re": -0.000654229,
+    "iin_im": -0.000349063,
+    "vout_re": 0.000743082,
+    "vout_im": -0.00899904,
+    "vin_mag": 0.967446,
+    "iin_mag": 0.000741537,
+    "vout_mag": 0.00903167,
+    "zin_re": 1139.76,
+    "zin_im": -634.836,
+    "inoise_total": 1.462274e-05,
+    "onoise_total": 1.158454e-09,
+    "gm_dc": 0.000339667,
+    "gmb_dc": 6.81213e-05,
+    "gds_dc": 5.55396e-06,
+    "ro_dc": 180051.7108513565
+  }
+}
