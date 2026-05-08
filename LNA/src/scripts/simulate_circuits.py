@@ -10,7 +10,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-
+DEFAULT_S21_MEASURE_FILENAME = "s21_data.txt"
 DEFAULT_MEASURE_FILENAME = "measures.json"
 DEFAULT_ANALYSIS_FILENAME = "analysis.json"
 DEFAULT_LOG_FILENAME = "ngspice.log.txt"
@@ -68,6 +68,50 @@ def _simulate_one_with_progress(
         priority=priority,
         timeout_seconds=timeout_seconds,
     )
+
+def read_freq_gain_txt_file(txt_path):
+    freq = []
+    s21 = []
+
+    txt_path = Path(txt_path)
+    with txt_path.open("r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            try:
+                f_val =     float(parts[0])
+                s21_val =   float(parts[1])
+            except ValueError:
+                continue
+            freq.append(f_val)
+            s21.append(s21_val)
+
+    return freq, s21
+
+def find_bw(txt_path, target_idx):
+    freq, gain = read_freq_gain_txt_file(txt_path)
+    
+    f0 = freq[target_idx]
+    g0 = gain[target_idx]
+
+    g3db = g0 - 3
+
+    f_low = 500e6
+    for i in range(target_idx, 0, -1):
+        if gain[i] >= g3db and gain[i-1] <= g3db:
+            f_low = freq[i-1]
+            break
+
+    f_high = 50e9
+    for i in range(target_idx, len(freq) -1):
+        if gain[i] >= g3db and gain[i+1] <= g3db:
+            f_high = freq[i+1]
+            break
+    return {"f_3db_low": f_low,
+            "f_3db_high": f_high,}
+
 
 
 def parse_measures_from_stdout(stdout_text):
@@ -245,8 +289,11 @@ def run_circuit_simulation(
             f"{timeout_seconds:g} second(s); process killed.\n"
         )
     (circuit_dir / log_filename).write_text(log_text)
+    s21_txt_path = circuit_dir / "s21_data.txt"
+    bw_measures = find_bw(s21_txt_path, target_idx=200)
     measures = parse_measures_from_stdout(result.stdout)
-
+    measures.update(bw_measures)
+    
     payload = {
         "netlist": netlist_path.name,
         "returncode": result.returncode,
@@ -271,53 +318,50 @@ def run_circuit_simulation(
 
 def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_K):
     """Derive useful LNA metrics from the saved scalar measures."""
-    gain_db = measures.get("gain_db")
+    try:
+        f0 = float(f0)
+    except (TypeError, ValueError):
+        f0 = None
+
+    s11r = measures.get("s11r")
+    s11i = measures.get("s11r")
+    s21r = measures.get("s21r")
+    s21i = measures.get("s21r")
     power = measures.get("pdc")
     f_3db_low = measures.get("f_3db_low")
     f_3db_high = measures.get("f_3db_high")
-    vin_re = measures.get("vin_re")
-    vin_im = measures.get("vin_im")
-    iin_re = measures.get("iin_re")
-    iin_im = measures.get("iin_im")
-    inoise_total = measures.get("inoise_total")
+    NF_db = measures.get("nf")
+    NFmin_db = measures.get("nf_min")
 
     derived = {}
 
-    if f_3db_low is None:
-        f_3db_low = 10e6
 
-    if f_3db_high is None:
-        f_3db_high = 10e9
+    if f_3db_low is None and f0:
+        f_3db_low = f0 / 10
 
-    if gain_db is not None:
-        derived["gain_db"] = gain_db
+    if f_3db_high is None and f0:
+        f_3db_high = f0 * 10
 
     if power is not None:
-        derived["power"] = power
+        derived["power_mw"] = power*1000
 
     if f_3db_low is not None and f_3db_high is not None and f0:
         bandwidth_hz = f_3db_high - f_3db_low
         derived["F_BW"] = 100.0 * bandwidth_hz / f0
+        
+    if s11r is not None and s11i is not None:
+        s11 = complex(s11r, s11i)
+        derived["S11_db"] = 20 * math.log10(abs(s11))
 
-    if None not in (vin_re, vin_im, iin_re, iin_im):
-        vin = complex(vin_re, vin_im)
-        iin = -complex(iin_re, iin_im)
-        if abs(iin) > 0:
-            zin = vin / iin
-            gamma = (zin - zo) / (zin + zo)
-            if abs(gamma) > 0:
-                derived["S11_db"] = 20.0 * math.log10(abs(gamma))
+    if s21r is not None and s21i is not None:
+        s21 = complex(s21r, s21i)
+        derived["S21_db"] = 20 * math.log10(abs(s21))
 
-    if (
-        inoise_total is not None
-        and f_3db_low is not None
-        and f_3db_high is not None
-        and f_3db_high > f_3db_low
-    ):
-        bandwidth_hz = f_3db_high - f_3db_low
-        nf = inoise_total / (4 * K_BOLTZMANN * temperature_k * zo)
-        if nf > 0:
-            derived["NF_db"] = 10.0 * math.log10(nf)
+    if NF_db is not None:
+        derived["NF_db"] = NF_db
+
+    if NFmin_db is not None:
+        derived["NFmin_db"] = NFmin_db
 
     return derived
 

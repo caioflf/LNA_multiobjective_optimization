@@ -45,6 +45,14 @@ FIXED_INPUT_COUPLING_CAP = {
 }
 
 
+def resolve_ac_sweep_bounds(f0, ac_start=None, ac_stop=None):
+    """Return AC sweep bounds, defaulting to one decade around the target."""
+    return (
+        f0 / 10 if ac_start is None else ac_start,
+        f0 * 10 if ac_stop is None else ac_stop,
+    )
+
+
 def _slugify(value, max_length=80):
     slug = "".join(
         character if character.isalnum() else "_"
@@ -189,13 +197,14 @@ def write_netlist(
     temperature_c,
     f0,
     vdd,
-    ac_start,
-    ac_stop,
+    ac_start=None,
+    ac_stop=None,
     print_useful_data=False,
     gate_network="default",
     source_network="default",
     load_network="default",
     feedback_network=None,
+    path=None,
 ):
     """
     Generate an ngspice netlist.
@@ -218,6 +227,8 @@ def write_netlist(
     useful for post-processing without printing full vectors.
     """
     netlist_file = Path(netlist_path)
+    path = Path(path)
+    ac_start, ac_stop = resolve_ac_sweep_bounds(f0, ac_start, ac_stop)
     include_paths = [
         _format_include_path(pdk_root, include_template, corner)
         for include_template in _as_include_templates(rf_include_path_template)
@@ -242,9 +253,9 @@ def write_netlist(
 
         fp.write("VDD vdd 0 DC {VDD}\n")
         fp.write("VBIAS vbias 0 DC {VG}\n\n")
-
-        fp.write("VIN       src 0 AC 1 DC 0\n")
-        fp.write("Rsource   src in 50\n")
+        
+        fp.write("VPORT1 in 0 DC 0 AC 1 portnum 1 z0 50\n\n")
+        
         fp.write(
             "XINCAP in gate_in "
             f"{FIXED_INPUT_COUPLING_CAP['model_name']} "
@@ -304,10 +315,9 @@ def write_netlist(
             f"l={FIXED_OUTPUT_COUPLING_CAP['length_um']} "
             f"mf={FIXED_OUTPUT_COUPLING_CAP['mf']}\n"
         )
-        fp.write("RLOAD out 0 50\n\n")
+        fp.write("VPORT2 out 0 DC 0 AC 0 portnum 2 z0 50\n\n")
 
         fp.write(".control\n")
-        fp.write("set sqrnoise\n")
         fp.write("op\n")
         fp.write("let idd = -i(VDD)\n")
         fp.write("let pdc = v(vdd) * idd\n")
@@ -316,55 +326,40 @@ def write_netlist(
         if print_useful_data:
             fp.write("show all\n")
 
-        fp.write(f"ac dec 200 {ac_start} {ac_stop}\n\n")
+        fp.write(f"sp dec 200 {ac_start} {ac_stop} 1\n\n")
+        
+        fp.write("let s11r = real(S_1_1[200])\n")
+        fp.write("let s11i = imag(S_1_1[200])\n")
+        fp.write("let s12r = real(S_1_2[200])\n")
+        fp.write("let s12i = imag(S_1_2[200])\n")
+        fp.write("let s21r = real(S_2_1[200])\n")
+        fp.write("let s21i = imag(S_2_1[200])\n")
+        fp.write("let s22r = real(S_2_2[200])\n")
+        fp.write("let s22i = imag(S_2_2[200])\n\n")
 
-        fp.write("setplot ac1\n")
-        fp.write("let gain_db_vector = db(v(out)/v(in))\n")
-        fp.write(f"meas ac gain_db       find    gain_db_vector                at={f0}\n")
+        fp.write("let nf = real(NF[200])\n")
+        fp.write("let nf_min = real(NFmin[200])\n\n")
 
-        fp.write("let gain_3db = gain_db - 3\n")
-        fp.write(f"let f_3db_low = {ac_start}\n")
-        fp.write(f"let f_3db_high = {ac_stop}\n")
-        fp.write("meas ac f_3db_low    when    gain_db_vector=gain_3db      rise=1\n")
-        fp.write("meas ac f_3db_high   when    gain_db_vector=gain_3db      fall=1\n")
-        fp.write(
-            "noise v(out) VIN dec 200 $&f_3db_low $&f_3db_high\n\n"
-        )
+        fp.write("let rn = real(Rn[200])\n")
+        fp.write("let soptr = real(SOpt[200])\n")
+        fp.write("let sopti = imag(SOpt[200])\n\n")
 
-        fp.write("setplot ac1\n")
+        fp.write("let s21_db = db(S_2_1)\n")
+        fp.write(f"wrdata s21_data.txt s21_db\n\n")
 
-        fp.write("let vin_re_vector = real(v(in))\n")
-        fp.write(f"meas ac vin_re       find    vin_re_vector                     at={f0}\n")
-
-        fp.write("let vin_im_vector = imag(v(in))\n")
-        fp.write(f"meas ac vin_im       find    vin_im_vector                     at={f0}\n")
-
-        fp.write("let iin_re_vector = real(i(VIN))\n")
-        fp.write(f"meas ac iin_re       find    iin_re_vector                  at={f0}\n")
-
-        fp.write("let iin_im_vector = imag(i(VIN))\n")
-        fp.write(f"meas ac iin_im       find    iin_im_vector                    at={f0}\n")
-
-        fp.write("let vout_re_vector = real(v(out))\n")
-        fp.write(f"meas ac vout_re      find    vout_re_vector                    at={f0}\n")
-
-        fp.write("let vout_im_vector = imag(v(out))\n")
-        fp.write(f"meas ac vout_im      find    vout_im_vector                    at={f0}\n")
-        if print_useful_data:
-            fp.write("let vin_mag_vector = mag(v(in))\n")
-            fp.write(f"meas ac vin_mag      find    vin_mag_vector                    at={f0}\n")
-            fp.write("let iin_mag_vector = mag(i(VIN))\n")
-            fp.write(f"meas ac iin_mag      find    iin_mag_vector                    at={f0}\n")
-            fp.write("let vout_mag_vector = mag(v(out))\n")
-            fp.write(f"meas ac vout_mag     find    vout_mag_vector                   at={f0}\n")
-            fp.write("let zin_re_vector = real(v(in)/(-i(VIN)))\n")
-            fp.write(f"meas ac zin_re       find    zin_re_vector                     at={f0}\n")
-            fp.write("let zin_im_vector = imag(v(in)/(-i(VIN)))\n")
-            fp.write(f"meas ac zin_im       find    zin_im_vector                     at={f0}\n")
-
-        fp.write("setplot noise2\n")
-        fp.write("print inoise_total\n")
-        fp.write("print onoise_total\n")
+        fp.write("print s11r\n")
+        fp.write("print s11i\n")
+        fp.write("print s12r\n")
+        fp.write("print s12i\n")
+        fp.write("print s21r\n")
+        fp.write("print s21i\n")
+        fp.write("print s22r\n")
+        fp.write("print s22i\n")
+        fp.write("print nf\n")
+        fp.write("print nf_min\n")
+        fp.write("print rn\n")
+        fp.write("print soptr\n")
+        fp.write("print sopti\n")
 
         fp.write(".endc\n")
 
@@ -740,8 +735,8 @@ def create_circuit_bundle(
     temperature_c=27,
     f0=5e9,
     vdd=1.8,
-    ac_start="100MEG",
-    ac_stop="10G",
+    ac_start=None,
+    ac_stop=None,
     print_useful_data=True,
     netlist_stem=None,
     optimization_index=None,
@@ -750,6 +745,7 @@ def create_circuit_bundle(
     Create one circuit folder containing the generated netlist and metadata.
     """
     output_root = Path(output_root)
+    ac_start, ac_stop = resolve_ac_sweep_bounds(f0, ac_start, ac_stop)
     circuit_dir = output_root / "circuits" / f"circuit_{circuit_index:08d}"
     circuit_dir.mkdir(parents=True, exist_ok=True)
 
@@ -791,6 +787,7 @@ def create_circuit_bundle(
         source_network=_selection_to_netlist_spec(source_network),
         load_network=_selection_to_netlist_spec(load_network),
         feedback_network=_selection_to_netlist_spec(feedback_network),
+        path=circuit_dir,
     )
 
     metadata = _build_circuit_metadata(
@@ -1030,7 +1027,7 @@ if __name__ == "__main__":
         temperature_c=27,
         f0=5e9,
         vdd=1.8,
-        ac_start="100MEG",
-        ac_stop="10G",
+        ac_start=None,
+        ac_stop=None,
     )
     print(f"Wrote {written_file}")

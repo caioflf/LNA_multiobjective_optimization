@@ -135,6 +135,9 @@ Feedback network:
 - may come from the passive database
 - None means open
 - all-zero RLC means open
+- in the optimizer, when None feedback is allowed, the all-zero RLC feedback
+  network is removed from the feedback choice axis to avoid duplicate "no
+  feedback" encodings
 
 Fixed circuit elements still present:
 
@@ -157,28 +160,28 @@ If all current database networks are passed to every role:
 - source_network: 265
   264 database networks + 1 None/short option
 - load_network: 264
-- feedback_network: 265
-  264 database networks + 1 None/open option
+- feedback_network: 264
+  263 non-open database networks + 1 None/open option
 
 Per transistor model, without VG sweep:
 
-  264 x 265 x 264 x 265 = 4,894,401,600
+  264 x 265 x 264 x 264 = 4,875,932,160
 
 Per transistor model, with default 7-point VG sweep:
 
-  4,894,401,600 x 7 = 34,260,811,200
+  4,875,932,160 x 7 = 34,131,525,120
 
 Across 18 standard NMOS models, with VG sweep:
 
-  34,260,811,200 x 18 = 616,694,601,600
+  34,131,525,120 x 18 = 614,367,452,160
 
 Across 18 NMOS_LVT models, with VG sweep:
 
-  34,260,811,200 x 18 = 616,694,601,600
+  34,131,525,120 x 18 = 614,367,452,160
 
 Across 36 NMOS + NMOS_LVT models, with VG sweep:
 
-  34,260,811,200 x 36 = 1,233,389,203,200
+  34,131,525,120 x 36 = 1,228,734,904,320
 
 
 6. Reduction Factors
@@ -198,6 +201,20 @@ Generate the current passive-network database:
 Run NGSA-IV optimization:
 
   make optimize-circuits OPT_POPULATION_SIZE=24 OPT_GENERATIONS=10
+
+Run NGSA-IV optimization with hard feasibility constraints:
+
+  make optimize-circuits OPT_MIN_GAIN_DB=0 OPT_MAX_S11_DB=-10
+
+If a 3 dB edge is not measured, analysis falls back to one decade around the
+target frequency:
+
+  f_3db_low = f0 / 10
+  f_3db_high = f0 * 10
+
+Run NGSA-IV optimization with four parallel ngspice evaluations per generation:
+
+  make optimize-circuits OPT_SIM_THREADS=4
 
 Simulate already generated circuits:
 

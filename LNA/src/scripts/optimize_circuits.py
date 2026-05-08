@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 import json
 import math
 import random
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -18,6 +21,7 @@ from src.scripts.netlist_generator import (
     OPEN_RLC_PARALLEL_IDENTIFIER,
     create_circuit_bundle,
     load_network_database,
+    resolve_ac_sweep_bounds,
 )
 from src.scripts.simulate_circuits import (
     DEFAULT_ANALYSIS_FILENAME,
@@ -30,7 +34,7 @@ from src.scripts.simulate_circuits import (
 )
 
 
-DEFAULT_OBJECTIVES = "NF_db:min,power:min,gain_db:max,F_BW:max,S11_db:min"
+DEFAULT_OBJECTIVES = "NF_db:min,power_mw:min,S21_db:max,F_BW:max,S11_db:min"
 GENE_NAMES = (
     "device_type",
     "vt",
@@ -55,6 +59,21 @@ TRANSISTOR_GROUP_ALIASES = {
     "nmos_and_lvt": "nmos_and_lvt",
     "all": "all",
 }
+
+
+def current_timestamp():
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def format_elapsed(seconds):
+    seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
 
 
 def resolve_transistor_group(group_name):
@@ -182,6 +201,117 @@ def objective_vector(metrics, objectives):
     return vector, missing
 
 
+def violation_amount(value, operator, limit):
+    try:
+        value = float(value)
+        limit = float(limit)
+    except (TypeError, ValueError):
+        return PENALTY_OBJECTIVE
+    if value is None or not math.isfinite(value):
+        return PENALTY_OBJECTIVE
+    if not math.isfinite(limit):
+        return PENALTY_OBJECTIVE
+    if operator in {"<", "<="}:
+        amount = max(0.0, value - limit)
+        return 1e-30 if operator == "<" and amount == 0 else amount
+    if operator in {">", ">="}:
+        amount = max(0.0, limit - value)
+        return 1e-30 if operator == ">" and amount == 0 else amount
+    return PENALTY_OBJECTIVE
+
+
+def total_constraint_violation(violations):
+    total = 0.0
+    for violation in violations:
+        amount = violation.get("violation_amount")
+        if amount is None:
+            amount = violation_amount(
+                violation.get("value"),
+                violation.get("operator"),
+                violation.get("limit"),
+            )
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError):
+            amount = PENALTY_OBJECTIVE
+        if not math.isfinite(amount):
+            amount = PENALTY_OBJECTIVE
+        total += amount
+    return total
+
+
+def record_constraint_violation_score(record):
+    if record.get("valid") is True:
+        return 0.0
+    raw_score = record.get("constraint_violation_score")
+    if raw_score is not None:
+        try:
+            score = float(raw_score)
+        except (TypeError, ValueError):
+            score = PENALTY_OBJECTIVE
+        if math.isfinite(score):
+            return score
+    violations = record.get("constraint_violations") or []
+    if violations:
+        return total_constraint_violation(violations)
+    return PENALTY_OBJECTIVE
+
+
+def build_hard_constraints(args):
+    constraints = [
+        {"name": "NF_db", "operator": "<=", "limit": args.max_nf_db},
+        {"name": "power_mw", "operator": "<=", "limit": args.max_power},
+        {"name": "S21_db", "operator": ">=", "limit": args.min_s21_db},
+        {"name": "F_BW", "operator": ">=", "limit": args.min_f_bw},
+        {"name": "S11_db", "operator": "<=", "limit": args.max_s11_db},
+    ]
+    return [
+        constraint
+        for constraint in constraints
+        if constraint["limit"] is not None
+    ]
+
+
+def hard_constraint_violations(metrics, constraints):
+    violations = []
+    for constraint in constraints:
+        name = constraint["name"]
+        operator = constraint["operator"]
+        limit = float(constraint["limit"])
+        raw_value = metrics.get(name)
+        value = None
+        if raw_value is not None:
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                value = None
+        if value is None or not math.isfinite(value):
+            violations.append(
+                {
+                    "name": name,
+                    "operator": operator,
+                    "limit": limit,
+                    "value": raw_value,
+                    "reason": "missing_or_nonfinite",
+                    "violation_amount": PENALTY_OBJECTIVE,
+                }
+            )
+            continue
+        passed = value <= limit if operator == "<=" else value >= limit
+        if not passed:
+            violations.append(
+                {
+                    "name": name,
+                    "operator": operator,
+                    "limit": limit,
+                    "value": value,
+                    "reason": "outside_limit",
+                    "violation_amount": violation_amount(value, operator, limit),
+                }
+            )
+    return violations
+
+
 def load_network_payload(database_path):
     database_path = Path(database_path)
     payload = json.loads(database_path.read_text())
@@ -280,6 +410,13 @@ def network_passive_indexes(selection):
     return {axis: int(indexes.get(axis, 0)) for axis in RLC_AXES}
 
 
+def is_open_rlc_network(selection):
+    return (
+        isinstance(selection, dict)
+        and selection.get("identifier") == OPEN_RLC_PARALLEL_IDENTIFIER
+    )
+
+
 def build_role_choices(networks, role_filters, *, include_default, allow_source_none, allow_feedback_none):
     choices = {}
     for role in NETWORK_ROLES:
@@ -293,6 +430,11 @@ def build_role_choices(networks, role_filters, *, include_default, allow_source_
         if role == "source" and allow_source_none:
             role_choices.insert(0, None)
         if role == "feedback" and allow_feedback_none:
+            role_choices = [
+                network
+                for network in role_choices
+                if not is_open_rlc_network(network)
+            ]
             role_choices.insert(0, None)
         if not role_choices:
             raise ValueError(f"No choices available for {role} after optimizer constraints")
@@ -346,6 +488,16 @@ def crossover_genomes(first, second, crossover_probability, rng):
 
 
 def dominates(first, second):
+    first_valid = first.get("valid") is True
+    second_valid = second.get("valid") is True
+    if first_valid != second_valid:
+        return first_valid
+    if not first_valid and not second_valid:
+        first_violation = record_constraint_violation_score(first)
+        second_violation = record_constraint_violation_score(second)
+        if first_violation != second_violation:
+            return first_violation < second_violation
+
     first_vector = first["objectives"]
     second_vector = second["objectives"]
     return (
@@ -584,6 +736,9 @@ def compact_record(record):
         "metrics": record["metrics"],
         "objectives": record["objectives"],
         "missing_metrics": record["missing_metrics"],
+        "constraint_violations": record.get("constraint_violations", []),
+        "constraint_violation_score": record.get("constraint_violation_score", 0.0),
+        "constraint_violation_count": record.get("constraint_violation_count", 0),
         "circuit_dir": record["circuit_dir"],
         "error": record.get("error"),
     }
@@ -598,6 +753,7 @@ class NgsaIvOptimizer:
         vg_values,
         role_choices,
         objectives,
+        hard_constraints,
         netlist_kwargs,
         simulation_priority,
         simulation_timeout_seconds,
@@ -609,6 +765,7 @@ class NgsaIvOptimizer:
         self.vg_values = vg_values
         self.role_choices = role_choices
         self.objectives = objectives
+        self.hard_constraints = hard_constraints
         self.netlist_kwargs = netlist_kwargs
         self.simulation_priority = simulation_priority
         self.simulation_timeout_seconds = simulation_timeout_seconds
@@ -617,6 +774,9 @@ class NgsaIvOptimizer:
         self.cache = {}
         self.next_circuit_index = 1
         self.history_path = self.output_root / "optimization_history.jsonl"
+        self._state_lock = threading.Lock()
+        self._history_lock = threading.Lock()
+        self._print_lock = threading.Lock()
         self.output_root.mkdir(parents=True, exist_ok=True)
         self.history_path.write_text("")
 
@@ -644,6 +804,14 @@ class NgsaIvOptimizer:
             self.rng.randrange(len(self.role_choices["load"])),
             self.rng.randrange(len(self.role_choices["feedback"])),
         )
+
+    def repair_genome(self, genome):
+        genome = tuple(genome)
+        transistor_key = genome[:4]
+        if transistor_key in self.transistor_axes["models_by_key"]:
+            return genome
+        replacement_key = self.rng.choice(self.transistor_axes["valid_model_keys"])
+        return (*replacement_key, *genome[4:])
 
     def decode_genome(self, genome):
         transistor_key = (genome[0], genome[1], genome[2], genome[3])
@@ -695,14 +863,36 @@ class NgsaIvOptimizer:
             },
         }
 
+    def append_history(self, record):
+        with self._history_lock:
+            with self.history_path.open("a") as fp:
+                fp.write(json.dumps(record) + "\n")
+
+    def print_timeout(self, circuit_index, circuit_dir, error):
+        timeout_text = (
+            "none"
+            if self.simulation_timeout_seconds is None
+            else f"{self.simulation_timeout_seconds:g}s"
+        )
+        with self._print_lock:
+            print(
+                "[optimize_circuits] simulation timed out: "
+                f"evaluation_id={circuit_index} "
+                f"circuit={circuit_dir.name} "
+                f"timeout={timeout_text} "
+                f"error={error}",
+                flush=True,
+            )
+
     def evaluate(self, genome):
         genome = tuple(genome)
-        if genome in self.cache:
-            return self.cache[genome]
+        with self._state_lock:
+            if genome in self.cache:
+                return self.cache[genome]
+            circuit_index = self.next_circuit_index
+            self.next_circuit_index += 1
 
         decoded = self.decode_genome(genome)
-        circuit_index = self.next_circuit_index
-        self.next_circuit_index += 1
         if decoded["transistor"] is None:
             record = {
                 "evaluation_id": circuit_index,
@@ -714,13 +904,16 @@ class NgsaIvOptimizer:
                 "objectives": [PENALTY_OBJECTIVE for _ in self.objectives],
                 "objective_specs": self.objectives,
                 "missing_metrics": [objective["name"] for objective in self.objectives],
+                "constraint_violations": [],
+                "constraint_violation_score": PENALTY_OBJECTIVE,
+                "constraint_violation_count": 0,
                 "circuit_dir": None,
                 "error": "No transistor model exists for the selected parameter indexes",
                 "created_at_unix": time.time(),
             }
-            with self.history_path.open("a") as fp:
-                fp.write(json.dumps(record) + "\n")
-            self.cache[genome] = record
+            self.append_history(record)
+            with self._state_lock:
+                self.cache[genome] = record
             return record
 
         circuit_dir = create_circuit_bundle(
@@ -739,6 +932,8 @@ class NgsaIvOptimizer:
         error = None
         metrics = {}
         missing_metrics = []
+        constraint_violations = []
+        constraint_violation_score = 0.0
         try:
             run_circuit_simulation(
                 circuit_dir,
@@ -756,13 +951,34 @@ class NgsaIvOptimizer:
             objectives, missing_metrics = objective_vector(metrics, self.objectives)
             if missing_metrics:
                 status = "missing_metrics"
+            constraint_violations = hard_constraint_violations(
+                metrics,
+                self.hard_constraints,
+            )
+            if constraint_violations:
+                status = (
+                    "missing_metrics"
+                    if status == "missing_metrics"
+                    else "constraint_failed"
+                )
+                objectives = [PENALTY_OBJECTIVE for _ in self.objectives]
+            constraint_violation_score = total_constraint_violation(
+                constraint_violations,
+            )
+            if missing_metrics:
+                constraint_violation_score += (
+                    PENALTY_OBJECTIVE * len(missing_metrics)
+                )
         except TimeoutError as exc:
+            self.print_timeout(circuit_index, circuit_dir, exc)
             if self.fail_fast:
                 raise
             status = "timed_out"
             error = str(exc)
             objectives = [PENALTY_OBJECTIVE for _ in self.objectives]
             missing_metrics = [objective["name"] for objective in self.objectives]
+            constraint_violations = []
+            constraint_violation_score = PENALTY_OBJECTIVE
         except Exception as exc:
             if self.fail_fast:
                 raise
@@ -770,6 +986,8 @@ class NgsaIvOptimizer:
             error = str(exc)
             objectives = [PENALTY_OBJECTIVE for _ in self.objectives]
             missing_metrics = [objective["name"] for objective in self.objectives]
+            constraint_violations = []
+            constraint_violation_score = PENALTY_OBJECTIVE
 
         record = {
             "evaluation_id": circuit_index,
@@ -781,6 +999,9 @@ class NgsaIvOptimizer:
             "objectives": objectives,
             "objective_specs": self.objectives,
             "missing_metrics": missing_metrics,
+            "constraint_violations": constraint_violations,
+            "constraint_violation_score": constraint_violation_score,
+            "constraint_violation_count": len(constraint_violations),
             "circuit_dir": str(circuit_dir.relative_to(self.output_root)),
             "error": error,
             "created_at_unix": time.time(),
@@ -788,27 +1009,53 @@ class NgsaIvOptimizer:
         (circuit_dir / "optimization_evaluation.json").write_text(
             json.dumps(record, indent=2) + "\n"
         )
-        with self.history_path.open("a") as fp:
-            fp.write(json.dumps(record) + "\n")
-        self.cache[genome] = record
+        self.append_history(record)
+        with self._state_lock:
+            self.cache[genome] = record
         return record
 
+    def evaluate_many(self, genomes, simulation_threads):
+        genomes = [tuple(genome) for genome in genomes]
+        if simulation_threads <= 1:
+            return [self.evaluate(genome) for genome in genomes]
 
-def initial_population(optimizer, population_size, rng):
-    population = []
-    genomes = set()
+        pending = []
+        seen = set()
+        for genome in genomes:
+            with self._state_lock:
+                cached = genome in self.cache
+            if cached or genome in seen:
+                continue
+            seen.add(genome)
+            pending.append(genome)
+
+        if pending:
+            with ThreadPoolExecutor(max_workers=simulation_threads) as executor:
+                futures = {
+                    executor.submit(self.evaluate, genome): genome
+                    for genome in pending
+                }
+                for future in as_completed(futures):
+                    future.result()
+
+        return [self.evaluate(genome) for genome in genomes]
+
+
+def initial_population(optimizer, population_size, simulation_threads):
+    genomes = []
+    seen = set()
     max_attempts = max(1000, population_size * 100)
     attempts = 0
-    while len(population) < population_size and attempts < max_attempts:
+    while len(genomes) < population_size and attempts < max_attempts:
         attempts += 1
         genome = optimizer.random_genome()
-        if genome in genomes:
+        if genome in seen:
             continue
-        genomes.add(genome)
-        population.append(optimizer.evaluate(genome))
-    if len(population) < population_size:
+        seen.add(genome)
+        genomes.append(genome)
+    if len(genomes) < population_size:
         raise RuntimeError("Could not build a unique initial population")
-    return population
+    return optimizer.evaluate_many(list(genomes), simulation_threads)
 
 
 def make_offspring_genomes(
@@ -860,8 +1107,11 @@ def write_generation(output_root, generation, population, all_records):
 
 
 def optimize(args):
+    started_at_unix = time.time()
+    started_at = current_timestamp()
     rng = random.Random(args.seed)
     objectives = parse_objectives(args.objectives)
+    hard_constraints = build_hard_constraints(args)
 
     network_payload, _ = load_network_payload(args.network_database)
     networks = ensure_open_rlc_network(load_network_database(args.network_database))
@@ -882,6 +1132,7 @@ def optimize(args):
 
     transistors = resolve_transistor_group(args.transistor_group)
     transistor_axes = build_transistor_axes(transistors)
+    ac_start, ac_stop = resolve_ac_sweep_bounds(args.f0, args.ac_start, args.ac_stop)
     netlist_kwargs = {
         "corner": args.corner,
         "pdk_root": args.pdk_root,
@@ -889,8 +1140,8 @@ def optimize(args):
         "temperature_c": args.temperature_c,
         "f0": args.f0,
         "vdd": args.vdd,
-        "ac_start": args.ac_start,
-        "ac_stop": args.ac_stop,
+        "ac_start": ac_start,
+        "ac_stop": ac_stop,
         "print_useful_data": True,
     }
 
@@ -900,6 +1151,7 @@ def optimize(args):
         vg_values=vg_values,
         role_choices=role_choices,
         objectives=objectives,
+        hard_constraints=hard_constraints,
         netlist_kwargs=netlist_kwargs,
         simulation_priority=args.sim_priority,
         simulation_timeout_seconds=args.sim_timeout,
@@ -939,7 +1191,10 @@ def optimize(args):
         "offspring_size": args.offspring_size,
         "generations": args.generations,
         "seed": args.seed,
+        "started_at": started_at,
+        "started_at_unix": started_at_unix,
         "objectives": objectives,
+        "hard_constraints": hard_constraints,
         "search_space": search_space,
         "total_designs": total_designs,
         "planned_simulations": planned_simulations,
@@ -959,10 +1214,12 @@ def optimize(args):
         },
         "network_database": str(args.network_database),
         "netlist_parameters": netlist_kwargs,
+        "simulation_threads": args.sim_threads,
         "simulation_timeout_seconds": args.sim_timeout,
     }
     write_json(Path(args.output_root) / "optimization_config.json", configuration)
 
+    print(f"[optimize_circuits] started at: {started_at}", flush=True)
     print(
         "[optimize_circuits] search space sizes: "
         + ", ".join(f"{key}={value}" for key, value in search_space.items()),
@@ -980,12 +1237,29 @@ def optimize(args):
         f"offspring {args.offspring_size:,} * generations {args.generations:,}",
         flush=True,
     )
+    if hard_constraints:
+        print(
+            "[optimize_circuits] hard constraints: "
+            + ", ".join(
+                f"{item['name']} {item['operator']} {item['limit']}"
+                for item in hard_constraints
+            ),
+            flush=True,
+        )
     if args.sim_timeout is not None:
         print(
             f"[optimize_circuits] simulation timeout: {args.sim_timeout:g} second(s)",
             flush=True,
         )
-    population = initial_population(optimizer, args.population_size, rng)
+    print(
+        f"[optimize_circuits] simulation workers: {args.sim_threads}",
+        flush=True,
+    )
+    population = initial_population(
+        optimizer,
+        args.population_size,
+        args.sim_threads,
+    )
     write_generation(args.output_root, 0, population, list(optimizer.cache.values()))
 
     for generation in range(1, args.generations + 1):
@@ -998,7 +1272,11 @@ def optimize(args):
             args.mutation_probability,
             rng,
         )
-        offspring = [optimizer.evaluate(genome) for genome in offspring_genomes]
+        offspring_genomes = [
+            optimizer.repair_genome(genome)
+            for genome in offspring_genomes
+        ]
+        offspring = optimizer.evaluate_many(offspring_genomes, args.sim_threads)
         population = select_survivors_ngsa_iv(
             population + offspring,
             args.population_size,
@@ -1012,7 +1290,7 @@ def optimize(args):
             genome = optimizer.random_genome()
             if genome in optimizer.cache:
                 continue
-            population.append(optimizer.evaluate(genome))
+            population.append(optimizer.evaluate_many([genome], args.sim_threads)[0])
             population = select_survivors_ngsa_iv(
                 population,
                 args.population_size,
@@ -1026,17 +1304,28 @@ def optimize(args):
     all_records = list(optimizer.cache.values())
     valid_records = [record for record in all_records if record["valid"]]
     pareto = non_dominated_sort(valid_records)[0] if valid_records else []
+    finished_at_unix = time.time()
+    finished_at = current_timestamp()
+    elapsed_seconds = finished_at_unix - started_at_unix
     summary = {
         "algorithm": "NGSA-IV",
         "generations": args.generations,
         "population_size": args.population_size,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "started_at_unix": started_at_unix,
+        "finished_at_unix": finished_at_unix,
+        "elapsed_seconds": elapsed_seconds,
+        "elapsed_time": format_elapsed(elapsed_seconds),
         "planned_simulations": planned_simulations,
         "total_designs": total_designs,
         "valid_seed_designs": valid_seed_designs,
+        "simulation_threads": args.sim_threads,
         "evaluations": len(all_records),
         "valid_evaluations": len(valid_records),
         "pareto_size": len(pareto),
         "objectives": objectives,
+        "hard_constraints": hard_constraints,
         "pareto_front": [compact_record(record) for record in pareto],
     }
     write_json(Path(args.output_root) / "pareto_front.json", summary["pareto_front"])
@@ -1045,6 +1334,12 @@ def optimize(args):
         "[optimize_circuits] complete: "
         f"{len(valid_records)}/{len(all_records)} valid evaluations, "
         f"{len(pareto)} Pareto candidates",
+        flush=True,
+    )
+    print(f"[optimize_circuits] finished at: {finished_at}", flush=True)
+    print(
+        "[optimize_circuits] elapsed time: "
+        f"{format_elapsed(elapsed_seconds)} ({elapsed_seconds:.3f} seconds)",
         flush=True,
     )
     return summary
@@ -1091,6 +1386,31 @@ def main():
     parser.add_argument("--generations", type=int, default=10)
     parser.add_argument("--seed", type=int)
     parser.add_argument("--objectives", default=DEFAULT_OBJECTIVES)
+    parser.add_argument(
+        "--max-nf-db",
+        type=float,
+        help="Hard feasibility constraint: require NF_db <= this value.",
+    )
+    parser.add_argument(
+        "--max-power",
+        type=float,
+        help="Hard feasibility constraint: require power_mw <= this value.",
+    )
+    parser.add_argument(
+        "--min-s21-db",
+        type=float,
+        help="Hard feasibility constraint: require s21_db >= this value.",
+    )
+    parser.add_argument(
+        "--min-f-bw",
+        type=float,
+        help="Hard feasibility constraint: require F_BW >= this value.",
+    )
+    parser.add_argument(
+        "--max-s11-db",
+        type=float,
+        help="Hard feasibility constraint: require S11_db <= this value.",
+    )
     parser.add_argument("--reference-partitions", type=int, default=4)
     parser.add_argument("--crossover-probability", type=float, default=0.9)
     parser.add_argument("--mutation-probability", type=float, default=0.2)
@@ -1108,6 +1428,12 @@ def main():
         default=DEFAULT_SIMULATION_PRIORITY,
     )
     parser.add_argument(
+        "--sim-threads",
+        type=int,
+        default=1,
+        help="Number of circuit evaluations to simulate in parallel per generation.",
+    )
+    parser.add_argument(
         "--sim-timeout",
         type=float,
         help="Kill an ngspice simulation after this many seconds.",
@@ -1122,8 +1448,14 @@ def main():
     parser.add_argument("--temperature-c", type=float, default=27)
     parser.add_argument("--f0", type=float, default=5e9)
     parser.add_argument("--vdd", type=float, default=1.8)
-    parser.add_argument("--ac-start", default="100MEG")
-    parser.add_argument("--ac-stop", default="10G")
+    parser.add_argument(
+        "--ac-start",
+        help="AC sweep start frequency. Defaults to one decade below --f0.",
+    )
+    parser.add_argument(
+        "--ac-stop",
+        help="AC sweep stop frequency. Defaults to one decade above --f0.",
+    )
     args = parser.parse_args()
 
     if args.population_size < 1:
@@ -1132,6 +1464,8 @@ def main():
         raise ValueError("--offspring-size must be at least 1")
     if args.generations < 0:
         raise ValueError("--generations must be non-negative")
+    if args.sim_threads < 1:
+        raise ValueError("--sim-threads must be at least 1")
     if args.sim_timeout is not None and args.sim_timeout <= 0:
         raise ValueError("--sim-timeout must be positive")
     if not 0 <= args.crossover_probability <= 1:
