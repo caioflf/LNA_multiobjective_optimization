@@ -8,13 +8,20 @@ from pathlib import Path
 import statistics
 
 
-METRIC_NAMES = ("NF_db", "power", "gain_db", "F_BW", "S11_db")
+METRIC_NAMES = (
+    "NF_db",
+    "NFmin_db",
+    "power_dBm",
+    "S21_db",
+    "F_BW",
+    "S11_db",
+)
 NETWORK_ROLES = ("gate", "source", "load", "feedback")
 RLC_AXES = ("r", "l", "c")
 DEFAULT_OBJECTIVES = (
     {"name": "NF_db", "direction": "min"},
-    {"name": "power", "direction": "min"},
-    {"name": "gain_db", "direction": "max"},
+    {"name": "power_dBm", "direction": "min"},
+    {"name": "S21_db", "direction": "max"},
     {"name": "F_BW", "direction": "max"},
     {"name": "S11_db", "direction": "min"},
 )
@@ -58,10 +65,21 @@ def read_run(run_root):
     }
 
 
+def canonical_metric_name(metric_name):
+    if metric_name in {"power", "power_mw"}:
+        return "power_dBm"
+    if metric_name == "gain_db":
+        return "S21_db"
+    return metric_name
+
+
 def objective_specs_from_config(config):
     objectives = config.get("objectives") or DEFAULT_OBJECTIVES
     return [
-        {"name": item["name"], "direction": item.get("direction", "min")}
+        {
+            "name": canonical_metric_name(item["name"]),
+            "direction": item.get("direction", "min"),
+        }
         for item in objectives
     ]
 
@@ -79,7 +97,34 @@ def safe_float(value):
 
 
 def metric_value(record, metric_name):
-    return safe_float((record.get("metrics") or {}).get(metric_name))
+    metrics = record.get("metrics") or {}
+    value = safe_float(metrics.get(metric_name))
+    if value is not None:
+        return value
+
+    # Compatibility with older runs that wrote gain_db and power in watts.
+    if metric_name == "S21_db":
+        return safe_float(metrics.get("gain_db"))
+    if metric_name == "gain_db":
+        return safe_float(metrics.get("S21_db"))
+    if metric_name == "power_mw":
+        value = safe_float(metrics.get("power_dBm"))
+        if value is not None:
+            return 10 ** (value / 10.0)
+        value = safe_float(metrics.get("power"))
+        return None if value is None else value * 1000.0
+    if metric_name == "power_dBm":
+        value = safe_float(metrics.get("power_mw"))
+        if value is None:
+            value = safe_float(metrics.get("power"))
+            value = None if value is None else value * 1000.0
+        if value is None or value <= 0:
+            return None
+        return 10 * math.log10(value)
+    if metric_name == "power":
+        value = safe_float(metrics.get("power_mw"))
+        return None if value is None else value / 1000.0
+    return None
 
 
 def status_counts(records):
@@ -153,16 +198,24 @@ def non_dominated_front(records, objectives):
     return front
 
 
+def constraint_limit(constraints, *names):
+    for name in names:
+        value = constraints.get(name)
+        if value is not None:
+            return value
+    return None
+
+
 def passes_constraints(record, constraints):
     checks = (
-        ("max_nf_db", "NF_db", lambda value, limit: value <= limit),
-        ("max_power", "power", lambda value, limit: value <= limit),
-        ("min_gain_db", "gain_db", lambda value, limit: value >= limit),
-        ("min_f_bw", "F_BW", lambda value, limit: value >= limit),
-        ("max_s11_db", "S11_db", lambda value, limit: value <= limit),
+        (("max_nf_db",), "NF_db", lambda value, limit: value <= limit),
+        (("max_power_dbm", "max_power"), "power_dBm", lambda value, limit: value <= limit),
+        (("min_s21_db", "min_gain_db"), "S21_db", lambda value, limit: value >= limit),
+        (("min_f_bw",), "F_BW", lambda value, limit: value >= limit),
+        (("max_s11_db",), "S11_db", lambda value, limit: value <= limit),
     )
-    for constraint_name, metric_name, predicate in checks:
-        limit = constraints.get(constraint_name)
+    for constraint_names, metric_name, predicate in checks:
+        limit = constraint_limit(constraints, *constraint_names)
         if limit is None:
             continue
         value = metric_value(record, metric_name)
@@ -230,8 +283,8 @@ def _balanced_candidate(records, objectives):
 def shortlist_records(records, objectives):
     picks = [
         ("lowest_nf", _best_by_metric(records, "NF_db")),
-        ("lowest_power", _best_by_metric(records, "power")),
-        ("highest_gain", _best_by_metric(records, "gain_db", maximize=True)),
+        ("lowest_power", _best_by_metric(records, "power_dBm")),
+        ("highest_s21", _best_by_metric(records, "S21_db", maximize=True)),
         ("widest_bandwidth", _best_by_metric(records, "F_BW", maximize=True)),
         ("best_s11", _best_by_metric(records, "S11_db")),
         ("balanced", _balanced_candidate(records, objectives)),

@@ -32,8 +32,8 @@ def parse_args():
         help="Optional directory for CSV/JSON outputs. If omitted, only prints a summary.",
     )
     parser.add_argument("--max-nf-db", type=float)
-    parser.add_argument("--max-power", type=float)
-    parser.add_argument("--min-gain-db", type=float)
+    parser.add_argument("--max-power-dbm", "--max-power", dest="max_power_dbm", type=float)
+    parser.add_argument("--min-s21-db", "--min-gain-db", dest="min_s21_db", type=float)
     parser.add_argument("--min-f-bw", type=float)
     parser.add_argument(
         "--max-s11-db",
@@ -52,11 +52,20 @@ def parse_args():
 def build_constraints(args):
     return {
         "max_nf_db": args.max_nf_db,
-        "max_power": args.max_power,
-        "min_gain_db": args.min_gain_db,
+        "max_power_dbm": args.max_power_dbm,
+        "min_s21_db": args.min_s21_db,
         "min_f_bw": args.min_f_bw,
         "max_s11_db": args.max_s11_db,
     }
+
+
+def format_metric(value):
+    if value is None:
+        return "None"
+    try:
+        return f"{float(value):.3f}"
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def print_metric_stats(title, stats):
@@ -67,8 +76,9 @@ def print_metric_stats(title, stats):
             continue
         print(
             f"  {metric_name}: count={values['count']} "
-            f"min={values['min']:.6g} median={values['median']:.6g} "
-            f"max={values['max']:.6g}"
+            f"min={format_metric(values['min'])} "
+            f"median={format_metric(values['median'])} "
+            f"max={format_metric(values['max'])}"
         )
 
 
@@ -195,8 +205,12 @@ def main():
         row = flatten_record(item["record"])
         print(
             f"  {item['label']}: evaluation_id={row['evaluation_id']} "
-            f"gain_db={row['gain_db']} NF_db={row['NF_db']} "
-            f"power={row['power']} F_BW={row['F_BW']} S11_db={row['S11_db']}"
+            f"S21_db={format_metric(row.get('S21_db'))} "
+            f"NF_db={format_metric(row.get('NF_db'))} "
+            f"NFmin_db={format_metric(row.get('NFmin_db'))} "
+            f"power_dBm={format_metric(row.get('power_dBm'))} "
+            f"F_BW={format_metric(row.get('F_BW'))} "
+            f"S11_db={format_metric(row.get('S11_db'))}"
         )
 
     if args.output_dir:

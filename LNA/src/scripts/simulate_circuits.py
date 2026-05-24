@@ -92,22 +92,45 @@ def read_freq_gain_txt_file(txt_path):
 
 def find_bw(txt_path, target_idx):
     freq, gain = read_freq_gain_txt_file(txt_path)
-    
+
+    if not freq:
+        return {"f_3db_low": None, "f_3db_high": None}
+    if target_idx < 0 or target_idx >= len(freq):
+        raise IndexError(
+            f"target_idx {target_idx} out of range for {len(freq)} S21 samples"
+        )
+
     f0 = freq[target_idx]
     g0 = gain[target_idx]
-
     g3db = g0 - 3
 
-    f_low = 500e6
+    def crosses_target(left_gain, right_gain):
+        return min(left_gain, right_gain) <= g3db <= max(left_gain, right_gain)
+
+    def interpolate_crossing(left_freq, left_gain, right_freq, right_gain):
+        if right_gain == left_gain:
+            if left_freq > 0 and right_freq > 0:
+                return math.sqrt(left_freq * right_freq)
+            return 0.5 * (left_freq + right_freq)
+
+        fraction = (g3db - left_gain) / (right_gain - left_gain)
+        fraction = max(0.0, min(1.0, fraction))
+        if left_freq > 0 and right_freq > 0:
+            log_left = math.log10(left_freq)
+            log_right = math.log10(right_freq)
+            return 10 ** (log_left + fraction * (log_right - log_left))
+        return left_freq + fraction * (right_freq - left_freq)
+
+    f_low = f0 / 10
     for i in range(target_idx, 0, -1):
-        if gain[i] >= g3db and gain[i-1] <= g3db:
-            f_low = freq[i-1]
+        if crosses_target(gain[i], gain[i - 1]):
+            f_low = interpolate_crossing(freq[i], gain[i], freq[i - 1], gain[i - 1])
             break
 
-    f_high = 50e9
-    for i in range(target_idx, len(freq) -1):
-        if gain[i] >= g3db and gain[i+1] <= g3db:
-            f_high = freq[i+1]
+    f_high = f0 * 10
+    for i in range(target_idx, len(freq) - 1):
+        if crosses_target(gain[i], gain[i + 1]):
+            f_high = interpolate_crossing(freq[i], gain[i], freq[i + 1], gain[i + 1])
             break
     return {"f_3db_low": f_low,
             "f_3db_high": f_high,}
@@ -324,9 +347,9 @@ def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_
         f0 = None
 
     s11r = measures.get("s11r")
-    s11i = measures.get("s11r")
+    s11i = measures.get("s11i")
     s21r = measures.get("s21r")
-    s21i = measures.get("s21r")
+    s21i = measures.get("s21i")
     power = measures.get("pdc")
     f_3db_low = measures.get("f_3db_low")
     f_3db_high = measures.get("f_3db_high")
@@ -343,7 +366,9 @@ def derive_metrics(measures, *, f0=DEFAULT_F0, zo=ZO, temperature_k=TEMPERATURE_
         f_3db_high = f0 * 10
 
     if power is not None:
-        derived["power_mw"] = power*1000
+        power_mw = power * 1000
+        if power_mw > 0:
+            derived["power_dBm"] = 10 * math.log10(power_mw)
 
     if f_3db_low is not None and f_3db_high is not None and f0:
         bandwidth_hz = f_3db_high - f_3db_low

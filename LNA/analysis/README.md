@@ -49,25 +49,26 @@ Apply post-processing filters:
 
 ```sh
 make analysis-all \
-  ANALYSIS_MIN_GAIN_DB=0 \
+  ANALYSIS_MIN_S21_DB=0 \
   ANALYSIS_MAX_S11_DB=-10 \
   ANALYSIS_MAX_NF_DB=5 \
-  ANALYSIS_MAX_POWER=0.005 \
+  ANALYSIS_MAX_POWER_DBM=5 \
   ANALYSIS_MIN_F_BW=1
 ```
 
 Available Make parameters:
 
-- `ANALYSIS_RUN_ROOT`: optimization output directory to read. Default: `optimized_circuits`.
-- `ANALYSIS_OUTPUT_DIR`: CSV/JSON report directory. Default: `analysis/results`.
-- `ANALYSIS_PLOTS_DIR`: PNG plot directory. Default: `analysis/plots`.
+- `ANALYSIS_RUN_ROOT`: optimization output directory to read. Default: current `OPT_OUTPUT_ROOT`.
+- `ANALYSIS_OUTPUT_DIR`: CSV/JSON report directory. Default: `$(ANALYSIS_RUN_ROOT)/analysis/results`.
+- `ANALYSIS_PLOTS_DIR`: PNG plot directory. Default: `$(ANALYSIS_RUN_ROOT)/analysis/plots`.
 - `ANALYSIS_PYTHON`: Python used for summaries/exports. Default: `python3`.
 - `ANALYSIS_PLOT_PYTHON`: Python used for matplotlib plots. Default: `/opt/homebrew/bin/python3`.
-- `ANALYSIS_COLOR_BY`: plot color axis. One of `vg`, `wtot_um`, `length_um`, `NF_db`, `power`, `gain_db`, `F_BW`, `S11_db`. Default: `vg`.
-- `ANALYSIS_TOP_COUNT`: number of ranked candidates to export. Default: `200`.
+- `ANALYSIS_COLOR_BY`: plot color axis. Use metrics (`NF_db`, `NFmin_db`, `power_dBm`, `S21_db`, `F_BW`, `S11_db`), transistor values/indexes (`vg`, `wtot_um`, `length_um`, `device_type_index`, `vt_index`, `wtot_index`, `length_index`), or passive indexes like `gate_l_index`, `source_l_index`, `load_c_index`, `feedback_c_index`. Short forms like `feedback_c` also work. Default: `vg`.
+- `ANALYSIS_TOP_COUNT`: number of ranked candidates to export. Default: `1000`.
 - `ANALYSIS_MAX_NF_DB`: keep records with `NF_db <= value`.
-- `ANALYSIS_MAX_POWER`: keep records with `power <= value`.
-- `ANALYSIS_MIN_GAIN_DB`: keep records with `gain_db >= value`.
+- `ANALYSIS_MAX_POWER_DBM`: keep records with `power_dBm <= value`.
+- `ANALYSIS_MAX_POWER`: alias for `ANALYSIS_MAX_POWER_DBM`.
+- `ANALYSIS_MIN_S21_DB`: keep records with `S21_db >= value`.
 - `ANALYSIS_MIN_F_BW`: keep records with `F_BW >= value`.
 - `ANALYSIS_MAX_S11_DB`: keep records with `S11_db <= value`.
 - `ANALYSIS_CLEAN_PATHS`: paths removed by `make clean-analysis`. Default: generated `analysis/results*`, `analysis/plots*`, and analysis cache folders.
