@@ -11,6 +11,7 @@ PASSIVE_MAX_RESISTORS_PER_NETWORK ?=
 
 SIMULATE_CIRCUITS_SCRIPT := src/scripts/simulate_circuits.py
 OPTIMIZE_CIRCUITS_SCRIPT := src/scripts/optimize_circuits.py
+OPTIMIZE_CIRCUITS_MOPSO_SCRIPT := src/scripts/optimize_circuits_mopso.py
 CIRCUIT_OUTPUT_ROOT ?= generated_circuits
 
 SIM_THREADS ?= 8
@@ -47,6 +48,31 @@ OPT_MIN_S21_DB ?= 0
 OPT_MIN_F_BW ?= 
 OPT_MAX_S11_DB ?= 
 
+MOPSO_OUTPUT_ROOT ?= optimized_circuits_mopso
+MOPSO_TRANSISTOR_GROUP ?= nmos
+MOPSO_SWARM_SIZE ?= 300
+MOPSO_ITERATIONS ?= 400
+MOPSO_ARCHIVE_SIZE ?= 300
+MOPSO_ARCHIVE_PARTITIONS ?= 6
+MOPSO_INERTIA_WEIGHT ?= 0.6
+MOPSO_COGNITIVE_WEIGHT ?= 1.5
+MOPSO_SOCIAL_WEIGHT ?= 1.5
+MOPSO_VELOCITY_CLAMP ?= 0.5
+MOPSO_MUTATION_PROB ?= 0.05
+MOPSO_F0 ?= 5e9
+MOPSO_AC_START ?=
+MOPSO_AC_STOP ?=
+MOPSO_OVERWRITE_OUTPUT ?=
+MOPSO_SIM_THREADS ?= 8
+MOPSO_SIM_TIMEOUT ?= 180
+MOPSO_DEMO_SIM_TIMEOUT ?= 120
+MOPSO_SEED ?= 7
+MOPSO_MAX_NF_DB ?= 10
+MOPSO_MAX_POWER_DBM ?=
+MOPSO_MIN_S21_DB ?= 0
+MOPSO_MIN_F_BW ?=
+MOPSO_MAX_S11_DB ?=
+
 ANALYSIS_RUN_ROOT ?= $(OPT_OUTPUT_ROOT)
 #ANALYSIS_RUN_ROOT ?= data/02_optimized_circuits_6_0.9_0.15
 ANALYSIS_OUTPUT_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/results
@@ -65,6 +91,12 @@ ANALYSIS_MAX_POWER_DBM ?=
 ANALYSIS_MIN_S21_DB ?= 
 ANALYSIS_MIN_F_BW ?= 
 ANALYSIS_MAX_S11_DB ?= 
+ANALYSIS_COMPARE_RUNS ?= $(OPT_OUTPUT_ROOT) $(MOPSO_OUTPUT_ROOT)
+ANALYSIS_COMPARE_LABELS ?=
+ANALYSIS_PERFORMANCE_OUTPUT_DIR ?= analysis/performance
+ANALYSIS_HV_SAMPLES ?= 50000
+ANALYSIS_HV_SEED ?= 1
+ANALYSIS_GD_POWER ?= 2
 ANALYSIS_CLEAN_PATHS ?= $(OPT_OUTPUT_ROOT)/analysis/results \
 												$(OPT_OUTPUT_ROOT)/analysis/results_* \
 												$(OPT_OUTPUT_ROOT)/analysis/plots \
@@ -79,8 +111,9 @@ ANALYSIS_FILTER_ARGS = $(strip \
 	$(if $(ANALYSIS_MIN_F_BW),--min-f-bw $(ANALYSIS_MIN_F_BW)) \
 	$(if $(ANALYSIS_MAX_S11_DB),--max-s11-db $(ANALYSIS_MAX_S11_DB)) \
 )
+ANALYSIS_COMPARE_LABEL_ARGS = $(if $(ANALYSIS_COMPARE_LABELS),--labels $(ANALYSIS_COMPARE_LABELS))
 
-.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo analysis-summary analysis-export analysis-plots analysis-plots-history analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
+.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo analysis-summary analysis-export analysis-plots analysis-plots-history analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
 
 all: generate-passive-network-multiobjective
 
@@ -192,6 +225,80 @@ optimize-circuits-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUIT
 		$(if $(OPT_MAX_S11_DB),--max-s11-db $(OPT_MAX_S11_DB),) \
 		--seed 1 
 
+optimize-circuits-mopso: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUITS_MOPSO_SCRIPT)
+	$(PYTHON) $(OPTIMIZE_CIRCUITS_MOPSO_SCRIPT) \
+		--output-root $(MOPSO_OUTPUT_ROOT) \
+		--network-database $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) \
+		--transistor-group $(MOPSO_TRANSISTOR_GROUP) \
+		--swarm-size $(MOPSO_SWARM_SIZE) \
+		--iterations $(MOPSO_ITERATIONS) \
+		--archive-size $(MOPSO_ARCHIVE_SIZE) \
+		--f0 $(MOPSO_F0) \
+		$(if $(filter 1 true yes,$(MOPSO_OVERWRITE_OUTPUT)),--overwrite-output,) \
+		$(if $(MOPSO_AC_START),--ac-start $(MOPSO_AC_START),) \
+		$(if $(MOPSO_AC_STOP),--ac-stop $(MOPSO_AC_STOP),) \
+		--sim-threads $(MOPSO_SIM_THREADS) \
+		--vg-start 0.75 \
+		--vg-stop 1.25 \
+		--vg-step 0.005 \
+		--archive-partitions $(MOPSO_ARCHIVE_PARTITIONS) \
+		--inertia-weight $(MOPSO_INERTIA_WEIGHT) \
+		--cognitive-weight $(MOPSO_COGNITIVE_WEIGHT) \
+		--social-weight $(MOPSO_SOCIAL_WEIGHT) \
+		--velocity-clamp $(MOPSO_VELOCITY_CLAMP) \
+		--mutation-probability $(MOPSO_MUTATION_PROB) \
+		--gate-r-indexes 0 \
+		--gate-l-indexes 1:3 \
+		--gate-c-indexes 0 \
+		--feedback-r-indexes 0 \
+		--feedback-l-indexes 0 \
+		--load-l-indexes 1:3 \
+		--source-l-indexes 1:3 \
+		$(if $(MOPSO_SIM_TIMEOUT),--sim-timeout $(MOPSO_SIM_TIMEOUT),) \
+		$(if $(MOPSO_MAX_NF_DB),--max-nf-db $(MOPSO_MAX_NF_DB),) \
+		$(if $(MOPSO_MAX_POWER_DBM),--max-power-dbm $(MOPSO_MAX_POWER_DBM),) \
+		$(if $(MOPSO_MIN_S21_DB),--min-s21-db $(MOPSO_MIN_S21_DB),) \
+		$(if $(MOPSO_MIN_F_BW),--min-f-bw $(MOPSO_MIN_F_BW),) \
+		$(if $(MOPSO_MAX_S11_DB),--max-s11-db $(MOPSO_MAX_S11_DB),) \
+		$(if $(MOPSO_SEED),--seed $(MOPSO_SEED),)
+
+optimize-circuits-mopso-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUITS_MOPSO_SCRIPT)
+	$(PYTHON) $(OPTIMIZE_CIRCUITS_MOPSO_SCRIPT) \
+		--output-root optimization_demo_mopso \
+		--network-database $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) \
+		--transistor-group $(MOPSO_TRANSISTOR_GROUP) \
+		--swarm-size 12 \
+		--iterations 3 \
+		--archive-size 24 \
+		--f0 $(MOPSO_F0) \
+		$(if $(filter 1 true yes,$(MOPSO_OVERWRITE_OUTPUT)),--overwrite-output,) \
+		$(if $(MOPSO_AC_START),--ac-start $(MOPSO_AC_START),) \
+		$(if $(MOPSO_AC_STOP),--ac-stop $(MOPSO_AC_STOP),) \
+		--sim-threads $(MOPSO_SIM_THREADS) \
+		--sim-timeout $(MOPSO_DEMO_SIM_TIMEOUT) \
+		--vg-start 0.75 \
+		--vg-stop 1.15 \
+		--vg-step 0.025 \
+		--archive-partitions $(MOPSO_ARCHIVE_PARTITIONS) \
+		--inertia-weight $(MOPSO_INERTIA_WEIGHT) \
+		--cognitive-weight $(MOPSO_COGNITIVE_WEIGHT) \
+		--social-weight $(MOPSO_SOCIAL_WEIGHT) \
+		--velocity-clamp $(MOPSO_VELOCITY_CLAMP) \
+		--mutation-probability $(MOPSO_MUTATION_PROB) \
+		--gate-r-indexes 0 \
+		--gate-l-indexes 1:3 \
+		--gate-c-indexes 0 \
+		--feedback-r-indexes 0 \
+		--feedback-l-indexes 0 \
+		--source-l-indexes 1:3 \
+		--load-l-indexes 1:3 \
+		$(if $(MOPSO_MAX_NF_DB),--max-nf-db $(MOPSO_MAX_NF_DB),) \
+		$(if $(MOPSO_MAX_POWER_DBM),--max-power-dbm $(MOPSO_MAX_POWER_DBM),) \
+		$(if $(MOPSO_MIN_S21_DB),--min-s21-db $(MOPSO_MIN_S21_DB),) \
+		$(if $(MOPSO_MIN_F_BW),--min-f-bw $(MOPSO_MIN_F_BW),) \
+		$(if $(MOPSO_MAX_S11_DB),--max-s11-db $(MOPSO_MAX_S11_DB),) \
+		--seed 1
+
 analysis-summary:
 	$(ANALYSIS_PYTHON) analysis/summarize_optimization.py $(ANALYSIS_RUN_ROOT) --top-count $(ANALYSIS_TOP_COUNT) $(ANALYSIS_FILTER_ARGS)
 
@@ -203,6 +310,9 @@ analysis-plots:
 
 analysis-plots-history:
 	$(ANALYSIS_PLOT_PYTHON) analysis/plot_optimization.py $(ANALYSIS_RUN_ROOT) --output-dir $(ANALYSIS_HISTORY_PLOTS_DIR) --color-by $(ANALYSIS_COLOR_BY) --record-scope all $(ANALYSIS_FILTER_ARGS)
+
+analysis-performance:
+	$(ANALYSIS_PYTHON) analysis/evaluate_optimization.py $(ANALYSIS_COMPARE_RUNS) --output-dir $(ANALYSIS_PERFORMANCE_OUTPUT_DIR) --hv-samples $(ANALYSIS_HV_SAMPLES) --hv-seed $(ANALYSIS_HV_SEED) --gd-power $(ANALYSIS_GD_POWER) $(ANALYSIS_COMPARE_LABEL_ARGS) $(ANALYSIS_FILTER_ARGS)
 
 analysis-plot-all:
 	$(MAKE) analysis-plots ANALYSIS_COLOR_BY=wtot_um
