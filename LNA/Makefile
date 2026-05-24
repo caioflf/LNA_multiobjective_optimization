@@ -34,12 +34,15 @@ OPT_GENERATIONS ?= 200
 OPT_F0 ?= 5e9
 OPT_AC_START ?=
 OPT_AC_STOP ?=
+OPT_RESUME_FROM ?=
+OPT_RESUME_IN_PLACE ?= 1
+OPT_OVERWRITE_OUTPUT ?=
 OPT_SIM_THREADS ?= 8
 OPT_SIM_TIMEOUT ?= 180
 OPT_DEMO_SIM_TIMEOUT ?= 120
 OPT_SEED ?= 7
 OPT_MAX_NF_DB ?= 10
-OPT_MAX_POWER ?= 
+OPT_MAX_POWER_DBM ?= 
 OPT_MIN_S21_DB ?= 0
 OPT_MIN_F_BW ?= 
 OPT_MAX_S11_DB ?= 
@@ -47,14 +50,19 @@ OPT_MAX_S11_DB ?=
 ANALYSIS_RUN_ROOT ?= $(OPT_OUTPUT_ROOT)
 #ANALYSIS_RUN_ROOT ?= data/02_optimized_circuits_6_0.9_0.15
 ANALYSIS_OUTPUT_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/results
-ANALYSIS_PLOTS_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/plots
 ANALYSIS_PYTHON ?= $(PYTHON)
 ANALYSIS_PLOT_PYTHON ?= /opt/homebrew/bin/python3
-ANALYSIS_COLOR_BY ?= vg
-ANALYSIS_TOP_COUNT ?= 100
+#ANALYSIS_COLOR_BY ?= feedback_c
+ANALYSIS_COLOR_BY ?= wtot_um
+#ANALYSIS_COLOR_BY ?= length_um
+#ANALYSIS_COLOR_BY ?= vg
+#ANALYSIS_COLOR_BY ?= gate_l
+ANALYSIS_PLOTS_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/plots/$(ANALYSIS_COLOR_BY)
+ANALYSIS_HISTORY_PLOTS_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/plots_history/$(ANALYSIS_COLOR_BY)
+ANALYSIS_TOP_COUNT ?= 30000
 ANALYSIS_MAX_NF_DB ?= 
-ANALYSIS_MAX_POWER ?= 
-ANALYSIS_MIN_GAIN_DB ?= 
+ANALYSIS_MAX_POWER_DBM ?=
+ANALYSIS_MIN_S21_DB ?= 
 ANALYSIS_MIN_F_BW ?= 
 ANALYSIS_MAX_S11_DB ?= 
 ANALYSIS_CLEAN_PATHS ?= $(OPT_OUTPUT_ROOT)/analysis/results \
@@ -66,13 +74,13 @@ ANALYSIS_CLEAN_PATHS ?= $(OPT_OUTPUT_ROOT)/analysis/results \
 												$(OPT_OUTPUT_ROOT)/analysis/__pycache__
 ANALYSIS_FILTER_ARGS = $(strip \
 	$(if $(ANALYSIS_MAX_NF_DB),--max-nf-db $(ANALYSIS_MAX_NF_DB)) \
-	$(if $(ANALYSIS_MAX_POWER),--max-power $(ANALYSIS_MAX_POWER)) \
-	$(if $(ANALYSIS_MIN_GAIN_DB),--min-gain-db $(ANALYSIS_MIN_GAIN_DB)) \
+	$(if $(ANALYSIS_MAX_POWER_DBM),--max-power-dbm $(ANALYSIS_MAX_POWER_DBM)) \
+	$(if $(ANALYSIS_MIN_S21_DB),--min-s21-db $(ANALYSIS_MIN_S21_DB)) \
 	$(if $(ANALYSIS_MIN_F_BW),--min-f-bw $(ANALYSIS_MIN_F_BW)) \
 	$(if $(ANALYSIS_MAX_S11_DB),--max-s11-db $(ANALYSIS_MAX_S11_DB)) \
 )
 
-.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo analysis-summary analysis-export analysis-plots analysis-all clean-analysis clean-circuits
+.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo analysis-summary analysis-export analysis-plots analysis-plots-history analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
 
 all: generate-passive-network-multiobjective
 
@@ -121,12 +129,15 @@ optimize-circuits: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUITS_SCR
 		--offspring-size $(OPT_OFFSPRING_SIZE) \
 		--generations $(OPT_GENERATIONS) \
 		--f0 $(OPT_F0) \
+		$(if $(OPT_RESUME_FROM),--resume-from $(OPT_RESUME_FROM),) \
+		$(if $(filter 1 true yes,$(OPT_RESUME_IN_PLACE)),--resume-in-place,) \
+		$(if $(filter 1 true yes,$(OPT_OVERWRITE_OUTPUT)),--overwrite-output,) \
 		$(if $(OPT_AC_START),--ac-start $(OPT_AC_START),) \
 		$(if $(OPT_AC_STOP),--ac-stop $(OPT_AC_STOP),) \
 		--sim-threads $(OPT_SIM_THREADS) \
 		--vg-start 0.75 \
-		--vg-stop 1.15 \
-		--vg-step 0.025 \
+		--vg-stop 1.25 \
+		--vg-step 0.005 \
 		--reference-partitions $(OPT_PARTITIONS) \
 		--crossover-probability $(OPT_CROSSOVER_PROB) \
 		--mutation-probability $(OPT_MUTATION_PROB) \
@@ -139,7 +150,7 @@ optimize-circuits: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUITS_SCR
 		--source-l-indexes 1:3 \
 		$(if $(OPT_SIM_TIMEOUT),--sim-timeout $(OPT_SIM_TIMEOUT),) \
 		$(if $(OPT_MAX_NF_DB),--max-nf-db $(OPT_MAX_NF_DB),) \
-		$(if $(OPT_MAX_POWER),--max-power $(OPT_MAX_POWER),) \
+		$(if $(OPT_MAX_POWER_DBM),--max-power-dbm $(OPT_MAX_POWER_DBM),) \
 		$(if $(OPT_MIN_S21_DB),--min-s21-db $(OPT_MIN_S21_DB),) \
 		$(if $(OPT_MIN_F_BW),--min-f-bw $(OPT_MIN_F_BW),) \
 		$(if $(OPT_MAX_S11_DB),--max-s11-db $(OPT_MAX_S11_DB),) \
@@ -154,6 +165,9 @@ optimize-circuits-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUIT
 		--offspring-size 12 \
 		--generations 3 \
 		--f0 $(OPT_F0) \
+		$(if $(OPT_RESUME_FROM),--resume-from $(OPT_RESUME_FROM),) \
+		$(if $(filter 1 true yes,$(OPT_RESUME_IN_PLACE)),--resume-in-place,) \
+		$(if $(filter 1 true yes,$(OPT_OVERWRITE_OUTPUT)),--overwrite-output,) \
 		$(if $(OPT_AC_START),--ac-start $(OPT_AC_START),) \
 		$(if $(OPT_AC_STOP),--ac-stop $(OPT_AC_STOP),) \
 		--sim-threads $(OPT_SIM_THREADS) \
@@ -172,7 +186,7 @@ optimize-circuits-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUIT
 		--source-l-indexes 1:3 \
 		--load-l-indexes 1:3 \
 		$(if $(OPT_MAX_NF_DB),--max-nf-db $(OPT_MAX_NF_DB),) \
-		$(if $(OPT_MAX_POWER),--max-power $(OPT_MAX_POWER),) \
+		$(if $(OPT_MAX_POWER_DBM),--max-power-dbm $(OPT_MAX_POWER_DBM),) \
 		$(if $(OPT_MIN_S21_DB),--min-s21-db $(OPT_MIN_S21_DB),) \
 		$(if $(OPT_MIN_F_BW),--min-f-bw $(OPT_MIN_F_BW),) \
 		$(if $(OPT_MAX_S11_DB),--max-s11-db $(OPT_MAX_S11_DB),) \
@@ -187,7 +201,24 @@ analysis-export:
 analysis-plots:
 	$(ANALYSIS_PLOT_PYTHON) analysis/plot_optimization.py $(ANALYSIS_RUN_ROOT) --output-dir $(ANALYSIS_PLOTS_DIR) --color-by $(ANALYSIS_COLOR_BY) $(ANALYSIS_FILTER_ARGS)
 
-analysis-all: analysis-export analysis-plots
+analysis-plots-history:
+	$(ANALYSIS_PLOT_PYTHON) analysis/plot_optimization.py $(ANALYSIS_RUN_ROOT) --output-dir $(ANALYSIS_HISTORY_PLOTS_DIR) --color-by $(ANALYSIS_COLOR_BY) --record-scope all $(ANALYSIS_FILTER_ARGS)
+
+analysis-plot-all:
+	$(MAKE) analysis-plots ANALYSIS_COLOR_BY=wtot_um
+	$(MAKE) analysis-plots ANALYSIS_COLOR_BY=gate_l
+	$(MAKE) analysis-plots ANALYSIS_COLOR_BY=vg
+	$(MAKE) analysis-plots ANALYSIS_COLOR_BY=length_um
+	$(MAKE) analysis-plots ANALYSIS_COLOR_BY=feedback_c
+
+analysis-plot-all-history:
+	$(MAKE) analysis-plots-history ANALYSIS_COLOR_BY=wtot_um
+	$(MAKE) analysis-plots-history ANALYSIS_COLOR_BY=gate_l
+	$(MAKE) analysis-plots-history ANALYSIS_COLOR_BY=vg
+	$(MAKE) analysis-plots-history ANALYSIS_COLOR_BY=length_um
+	$(MAKE) analysis-plots-history ANALYSIS_COLOR_BY=feedback_c
+
+analysis-all: analysis-export analysis-plot-all
 
 clean-analysis:
 	rm -rf $(ANALYSIS_CLEAN_PATHS)
