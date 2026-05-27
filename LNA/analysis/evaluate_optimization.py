@@ -9,9 +9,9 @@ import random
 from pathlib import Path
 
 from optimization_data import (
-    apply_constraints,
     objective_specs_from_config,
     objective_vector,
+    passes_constraints,
     read_run,
     valid_records,
 )
@@ -39,6 +39,16 @@ def parse_args():
     parser.add_argument("--min-s21-db", "--min-gain-db", dest="min_s21_db", type=float)
     parser.add_argument("--min-f-bw", type=float)
     parser.add_argument("--max-s11-db", type=float)
+    parser.add_argument(
+        "--record-scope",
+        choices=("valid", "all"),
+        default="valid",
+        help=(
+            "Use optimizer-valid records only, or use all history records that "
+            "have finite objective metrics and let analysis constraints decide "
+            "which records are feasible."
+        ),
+    )
     parser.add_argument(
         "--hypervolume-samples",
         "--hv-samples",
@@ -279,7 +289,24 @@ def parse_reference_point(text, objective_count):
     return values
 
 
-def load_run_front(run_root, label, constraints, expected_objectives=None):
+def record_pool(records, constraints, objectives, record_scope):
+    if record_scope == "valid":
+        candidates = valid_records(records)
+    else:
+        candidates = records
+
+    feasible = []
+    for record in candidates:
+        vector = objective_vector(record, objectives)
+        if vector is None:
+            continue
+        if not passes_constraints(record, constraints):
+            continue
+        feasible.append((record, vector))
+    return feasible
+
+
+def load_run_front(run_root, label, constraints, record_scope, expected_objectives=None):
     run = read_run(run_root)
     objectives = objective_specs_from_config(run["config"])
     if expected_objectives is not None and objectives != expected_objectives:
@@ -287,12 +314,9 @@ def load_run_front(run_root, label, constraints, expected_objectives=None):
             f"Objective mismatch for {run_root}. Expected {expected_objectives}, got {objectives}"
         )
 
-    valid = apply_constraints(valid_records(run["records"]), constraints)
+    feasible = record_pool(run["records"], constraints, objectives, record_scope)
     items = []
-    for record in valid:
-        vector = objective_vector(record, objectives)
-        if vector is None:
-            continue
+    for record, vector in feasible:
         item = {
             "label": label,
             "run_root": str(run["run_root"]),
@@ -308,7 +332,8 @@ def load_run_front(run_root, label, constraints, expected_objectives=None):
         "algorithm": run["config"].get("algorithm"),
         "planned_simulations": run["config"].get("planned_simulations"),
         "records": run["records"],
-        "valid_records": valid,
+        "optimizer_valid_records": valid_records(run["records"]),
+        "feasible_records": [record for record, _ in feasible],
         "front": front,
         "objectives": objectives,
     }
@@ -352,7 +377,13 @@ def main():
     runs = []
     expected_objectives = None
     for run_root, label in zip(args.run_roots, labels):
-        run = load_run_front(run_root, label, constraints, expected_objectives)
+        run = load_run_front(
+            run_root,
+            label,
+            constraints,
+            args.record_scope,
+            expected_objectives,
+        )
         expected_objectives = run["objectives"]
         runs.append(run)
 
@@ -405,7 +436,8 @@ def main():
             "algorithm": run["algorithm"],
             "planned_simulations": run["planned_simulations"],
             "history_records": len(run["records"]),
-            "filtered_valid_records": len(run["valid_records"]),
+            "optimizer_valid_records": len(run["optimizer_valid_records"]),
+            "feasible_records": len(run["feasible_records"]),
             "pareto_records": len(run["front"]),
             "combined_pareto_contribution": contribution,
             "hypervolume": hv,
@@ -421,6 +453,7 @@ def main():
     report = {
         "objectives": expected_objectives,
         "constraints": constraints,
+        "record_scope": args.record_scope,
         "normalization": {
             "space": "minimization",
             "ideal": ideal,
@@ -457,12 +490,13 @@ def main():
         print(f"Hypervolume: Monte Carlo estimate with {args.hypervolume_samples} samples")
     print("")
     print(
-        "label | valid | pareto | combined | hypervolume | GD | IGD | spacing | spread_delta"
+        "label | feasible | opt_valid | pareto | combined | hypervolume | GD | IGD | spacing | spread_delta"
     )
     for row in rows:
         print(
             f"{row['label']} | "
-            f"{row['filtered_valid_records']} | "
+            f"{row['feasible_records']} | "
+            f"{row['optimizer_valid_records']} | "
             f"{row['pareto_records']} | "
             f"{row['combined_pareto_contribution']} | "
             f"{format_number(row['hypervolume'])} | "
