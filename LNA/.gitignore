@@ -1,5 +1,4 @@
-data/*
-optimized*
+#optimized*
 runs*
 *.zip
 *.pyc
