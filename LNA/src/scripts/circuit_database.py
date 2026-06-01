@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_CIRCUIT_DATABASE_PATH = Path("data/circuit_database/circuits.sqlite")
 KEY_NETLIST_PARAMETERS = (
     "corner",
@@ -22,6 +22,7 @@ KEY_NETLIST_PARAMETERS = (
 )
 NETWORK_ROLES = ("gate", "source", "load", "feedback")
 RLC_AXES = ("r", "l", "c")
+
 
 def canonical_json(payload):
     return json.dumps(
@@ -124,6 +125,73 @@ def metrics_priority(metrics):
     return -len(metrics or {})
 
 
+def source_record_key(
+    *,
+    circuit_key,
+    metrics_json,
+    source_evaluation_id,
+    source_circuit_dir,
+    created_at_unix,
+):
+    payload = {
+        "circuit_key": circuit_key,
+        "created_at_unix": normalize_for_signature(created_at_unix),
+        "metrics": json.loads(metrics_json),
+        "source_circuit_dir": source_circuit_dir,
+        "source_evaluation_id": source_evaluation_id,
+    }
+    payload_json = canonical_json(normalize_for_signature(payload))
+    return hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+
+
+def _table_columns(conn, table_name):
+    columns = set()
+    for row in conn.execute(f"PRAGMA table_info({table_name})"):
+        columns.add(row["name"] if isinstance(row, sqlite3.Row) else row[1])
+    return columns
+
+
+def _ensure_column(conn, table_name, column_name, column_definition):
+    if column_name in _table_columns(conn, table_name):
+        return
+    conn.execute(
+        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
+    )
+
+
+def _backfill_source_record_keys(conn):
+    rows = conn.execute(
+        """
+        SELECT
+            circuit_sources.id,
+            circuit_sources.circuit_key,
+            circuit_sources.source_evaluation_id,
+            circuit_sources.source_circuit_dir,
+            circuit_sources.created_at_unix,
+            circuits.metrics_json
+        FROM circuit_sources
+        JOIN circuits ON circuits.circuit_key = circuit_sources.circuit_key
+        WHERE circuit_sources.source_record_key IS NULL
+        """
+    ).fetchall()
+    for row in rows:
+        key = source_record_key(
+            circuit_key=row["circuit_key"],
+            metrics_json=row["metrics_json"],
+            source_evaluation_id=row["source_evaluation_id"],
+            source_circuit_dir=row["source_circuit_dir"],
+            created_at_unix=row["created_at_unix"],
+        )
+        conn.execute(
+            """
+            UPDATE circuit_sources
+            SET source_record_key = ?
+            WHERE id = ?
+            """,
+            (key, row["id"]),
+        )
+
+
 def initialize_database(conn):
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute(
@@ -164,14 +232,28 @@ def initialize_database(conn):
             source_evaluation_id INTEGER,
             source_circuit_dir TEXT,
             created_at_unix REAL,
+            source_record_key TEXT,
             FOREIGN KEY(circuit_key) REFERENCES circuits(circuit_key)
         )
         """
     )
+    _ensure_column(
+        conn,
+        "circuit_sources",
+        "source_record_key",
+        "TEXT",
+    )
+    _backfill_source_record_keys(conn)
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_sources_key
         ON circuit_sources(circuit_key)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_sources_record_key
+        ON circuit_sources(source_record_key)
         """
     )
     conn.execute(
@@ -225,11 +307,36 @@ def upsert_history_record(
     evaluation_id = record.get("evaluation_id")
     circuit_dir = record.get("circuit_dir")
     created_at_unix = record.get("created_at_unix")
+    record_key = source_record_key(
+        circuit_key=key,
+        metrics_json=metrics_json,
+        source_evaluation_id=evaluation_id,
+        source_circuit_dir=circuit_dir,
+        created_at_unix=created_at_unix,
+    )
+
+    existing_source = conn.execute(
+        """
+        SELECT id
+        FROM circuit_sources
+        WHERE source_record_key = ?
+        LIMIT 1
+        """,
+        (record_key,),
+    ).fetchone()
+    if existing_source is not None:
+        return {
+            "circuit_key": key,
+            "new_circuit": False,
+            "source_inserted": False,
+            "already_imported": True,
+        }
 
     existing = conn.execute(
         "SELECT metrics_json FROM circuits WHERE circuit_key = ?",
         (key,),
     ).fetchone()
+    new_circuit = existing is None
     if existing is None:
         conn.execute(
             """
@@ -313,9 +420,10 @@ def upsert_history_record(
             source_line,
             source_evaluation_id,
             source_circuit_dir,
-            created_at_unix
+            created_at_unix,
+            source_record_key
         )
-        VALUES(?, ?, ?, ?, ?, ?, ?)
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             key,
@@ -325,9 +433,15 @@ def upsert_history_record(
             evaluation_id,
             circuit_dir,
             created_at_unix,
+            record_key,
         ),
     )
-    return key
+    return {
+        "circuit_key": key,
+        "new_circuit": new_circuit,
+        "source_inserted": True,
+        "already_imported": False,
+    }
 
 
 class CircuitDatabase:
