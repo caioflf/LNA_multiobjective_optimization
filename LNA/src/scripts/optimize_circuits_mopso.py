@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.scripts.circuit_database import DEFAULT_CIRCUIT_DATABASE_PATH
 from src.scripts.netlist_generator import (
     DEFAULT_NETWORK_DATABASE_PATH,
     load_network_database,
@@ -35,6 +36,7 @@ from src.scripts.optimize_circuits import (
     load_network_payload,
     non_dominated_sort,
     parse_objectives,
+    resolve_circuit_database_path,
     resolve_transistor_group,
     select_survivors_ngsa_iv,
     unique_records,
@@ -102,9 +104,10 @@ def random_unique_genomes(optimizer, count):
     return genomes
 
 
-def make_particle(record, space_sizes, velocity_clamp, rng):
+def make_particle(particle_id, record, space_sizes, velocity_clamp, rng):
     position = [float(value) for value in record["genome"]]
     return {
+        "particle_id": particle_id,
         "position": position,
         "velocity": random_velocity(space_sizes, velocity_clamp, rng),
         "record": record,
@@ -136,13 +139,91 @@ def update_archive(records, archive_size, archive_partitions, rng):
     return select_survivors_ngsa_iv(front, archive_size, archive_partitions, rng)
 
 
+def archive_update_candidates(archive, swarm_records, particles=None):
+    records = []
+    records.extend(archive)
+    records.extend(swarm_records)
+    if particles is not None:
+        records.extend(particle["personal_best"] for particle in particles)
+    return records
+
+
+def compact_record_ref(record):
+    if record is None:
+        return None
+    return {
+        "evaluation_id": record.get("evaluation_id"),
+        "status": record.get("status"),
+        "valid": record.get("valid"),
+        "genome": record.get("genome"),
+        "candidate": record.get("candidate"),
+        "metrics": record.get("metrics") or {},
+        "objectives": record.get("objectives"),
+        "missing_metrics": record.get("missing_metrics") or [],
+        "constraint_violations": record.get("constraint_violations") or [],
+        "constraint_violation_score": record.get("constraint_violation_score"),
+        "constraint_violation_count": record.get("constraint_violation_count"),
+        "circuit_dir": record.get("circuit_dir"),
+        "error": record.get("error"),
+    }
+
+
+def movement_record_ref(record):
+    if record is None:
+        return None
+    return {
+        "evaluation_id": record.get("evaluation_id"),
+        "status": record.get("status"),
+        "valid": record.get("valid"),
+        "genome": record.get("genome"),
+        "metrics": record.get("metrics") or {},
+        "objectives": record.get("objectives"),
+        "constraint_violation_score": record.get("constraint_violation_score"),
+        "constraint_violation_count": record.get("constraint_violation_count"),
+    }
+
+
+def compact_particle_state(particle):
+    return {
+        "particle_id": particle["particle_id"],
+        "position": particle["position"],
+        "velocity": particle["velocity"],
+        "record": compact_record_ref(particle["record"]),
+        "personal_best_position": particle["personal_best_position"],
+        "personal_best": compact_record_ref(particle["personal_best"]),
+    }
+
+
+def write_swarm_state(
+    output_root,
+    iteration,
+    particles,
+    archive,
+    *,
+    movements=None,
+):
+    payload = {
+        "iteration": iteration,
+        "swarm_size": len(particles),
+        "archive_size": len(archive),
+        "archive": [compact_record_ref(record) for record in archive],
+        "particles": [compact_particle_state(particle) for particle in particles],
+    }
+    if movements is not None:
+        payload["movements"] = movements
+    write_json(
+        Path(output_root) / "swarm" / f"iteration_{iteration:04d}.json",
+        payload,
+    )
+
+
 def select_leader(archive, rng):
     if not archive:
         raise ValueError("Cannot select a MOPSO leader from an empty archive")
     if len(archive) == 1:
         return archive[0]
 
-    distances = crowding_distances(non_dominated_sort(archive)[0])
+    distances = crowding_distances(archive)
     sample = rng.sample(archive, min(3, len(archive)))
     return max(
         sample,
@@ -313,6 +394,10 @@ def optimize(args):
                 "intentionally start over there."
             )
 
+    circuit_database_path = resolve_circuit_database_path(
+        args.circuit_database,
+        args.no_circuit_database,
+    )
     optimizer = NgsaIvOptimizer(
         output_root=args.output_root,
         transistor_axes=prepared["transistor_axes"],
@@ -325,6 +410,7 @@ def optimize(args):
         simulation_timeout_seconds=args.sim_timeout,
         fail_fast=args.fail_fast,
         rng=rng,
+        circuit_database_path=circuit_database_path,
     )
 
     planned_simulations = args.swarm_size + args.swarm_size * args.iterations
@@ -342,6 +428,7 @@ def optimize(args):
         "hard_constraints": prepared["hard_constraints"],
         "search_space": search_space,
         "total_designs": total_designs,
+        "planned_evaluations": planned_simulations,
         "planned_simulations": planned_simulations,
         "planned_initial_simulations": args.swarm_size,
         "valid_seed_designs": valid_seed_designs,
@@ -353,6 +440,15 @@ def optimize(args):
         "netlist_parameters": prepared["netlist_kwargs"],
         "simulation_threads": args.sim_threads,
         "simulation_timeout_seconds": args.sim_timeout,
+        "circuit_database": {
+            "requested_path": None if args.no_circuit_database else args.circuit_database,
+            "enabled": circuit_database_path is not None,
+            "path": None if circuit_database_path is None else str(circuit_database_path),
+        },
+        "swarm_trace": {
+            "enabled": True,
+            "path_pattern": "swarm/iteration_XXXX.json",
+        },
         "mopso_parameters": {
             "inertia_weight": args.inertia_weight,
             "cognitive_weight": args.cognitive_weight,
@@ -400,6 +496,18 @@ def optimize(args):
         f"[optimize_circuits_mopso] simulation workers: {args.sim_threads}",
         flush=True,
     )
+    if circuit_database_path is not None:
+        print(
+            "[optimize_circuits_mopso] circuit database reuse: "
+            f"{circuit_database_path}",
+            flush=True,
+        )
+    elif not args.no_circuit_database:
+        print(
+            "[optimize_circuits_mopso] circuit database reuse: disabled "
+            f"(not found: {args.circuit_database})",
+            flush=True,
+        )
     print(
         f"[optimize_circuits_mopso] config written to: {Path(args.output_root) / 'optimization_config.json'}",
         flush=True,
@@ -408,26 +516,38 @@ def optimize(args):
     initial_genomes = random_unique_genomes(optimizer, args.swarm_size)
     swarm_records = optimizer.evaluate_many(initial_genomes, args.sim_threads)
     particles = [
-        make_particle(record, optimizer.space_sizes, args.velocity_clamp, rng)
-        for record in swarm_records
+        make_particle(index, record, optimizer.space_sizes, args.velocity_clamp, rng)
+        for index, record in enumerate(swarm_records)
     ]
     archive = update_archive(
-        list(optimizer.cache.values()),
+        archive_update_candidates([], swarm_records, particles),
         args.archive_size,
         args.archive_partitions,
         rng,
     )
-    write_generation(args.output_root, 0, swarm_records, list(optimizer.cache.values()))
+    write_generation(
+        args.output_root,
+        0,
+        swarm_records,
+        list(optimizer.cache.values()),
+        pareto_source_records=archive,
+    )
+    write_swarm_state(args.output_root, 0, particles, archive)
 
     for iteration in range(1, args.iterations + 1):
         print(
             f"[optimize_circuits_mopso] iteration {iteration}/{args.iterations}",
             flush=True,
         )
-        next_genomes = [
-            move_particle(
+        next_genomes = []
+        movements = []
+        for particle in particles:
+            leader = select_leader(archive, rng)
+            before_position = list(particle["position"])
+            before_velocity = list(particle["velocity"])
+            genome = move_particle(
                 particle,
-                select_leader(archive, rng),
+                leader,
                 optimizer.space_sizes,
                 args.inertia_weight,
                 args.cognitive_weight,
@@ -437,16 +557,40 @@ def optimize(args):
                 optimizer,
                 rng,
             )
-            for particle in particles
-        ]
+            next_genomes.append(genome)
+            movements.append(
+                {
+                    "particle_id": particle["particle_id"],
+                    "leader": movement_record_ref(leader),
+                    "before_position": before_position,
+                    "before_velocity": before_velocity,
+                    "personal_best_before": movement_record_ref(
+                        particle["personal_best"]
+                    ),
+                    "personal_best_position_before": list(
+                        particle["personal_best_position"]
+                    ),
+                    "after_position": list(particle["position"]),
+                    "after_velocity": list(particle["velocity"]),
+                    "moved_genome": list(genome),
+                }
+            )
+
         swarm_records = optimizer.evaluate_many(next_genomes, args.sim_threads)
-        for particle, record in zip(particles, swarm_records):
+        for particle, record, movement in zip(particles, swarm_records, movements):
             particle["record"] = record
             particle["position"] = [float(value) for value in record["genome"]]
             update_personal_best(particle, rng)
+            movement["evaluated_record"] = movement_record_ref(record)
+            movement["personal_best_after"] = movement_record_ref(
+                particle["personal_best"]
+            )
+            movement["personal_best_position_after"] = list(
+                particle["personal_best_position"]
+            )
 
         archive = update_archive(
-            list(optimizer.cache.values()),
+            archive_update_candidates(archive, swarm_records, particles),
             args.archive_size,
             args.archive_partitions,
             rng,
@@ -456,6 +600,14 @@ def optimize(args):
             iteration,
             swarm_records,
             list(optimizer.cache.values()),
+            pareto_source_records=archive,
+        )
+        write_swarm_state(
+            args.output_root,
+            iteration,
+            particles,
+            archive,
+            movements=movements,
         )
 
     all_records = list(optimizer.cache.values())
@@ -477,11 +629,14 @@ def optimize(args):
         "finished_at_unix": finished_at_unix,
         "elapsed_seconds": elapsed_seconds,
         "elapsed_time": format_elapsed(elapsed_seconds),
+        "planned_evaluations": planned_simulations,
         "planned_simulations": planned_simulations,
         "planned_initial_simulations": args.swarm_size,
         "total_designs": total_designs,
         "valid_seed_designs": valid_seed_designs,
         "simulation_threads": args.sim_threads,
+        "database_hits": optimizer.database_hits,
+        "simulation_runs": optimizer.simulation_runs,
         "evaluations": len(all_records),
         "valid_evaluations": len(valid_records),
         "pareto_source": "all_evaluations",
@@ -501,12 +656,19 @@ def optimize(args):
         f"{len(pareto)} Pareto candidates",
         flush=True,
     )
+    print(
+        "[optimize_circuits_mopso] evaluation sources: "
+        f"{optimizer.database_hits:,} database hit(s), "
+        f"{optimizer.simulation_runs:,} ngspice simulation(s)",
+        flush=True,
+    )
     print(f"[optimize_circuits_mopso] finished at: {finished_at}", flush=True)
     print(
         "[optimize_circuits_mopso] elapsed time: "
         f"{format_elapsed(elapsed_seconds)} ({elapsed_seconds:.3f} seconds)",
         flush=True,
     )
+    optimizer.close()
     return summary
 
 
@@ -608,6 +770,19 @@ def main():
         "--sim-timeout",
         type=float,
         help="Kill an ngspice simulation after this many seconds.",
+    )
+    parser.add_argument(
+        "--circuit-database",
+        default=str(DEFAULT_CIRCUIT_DATABASE_PATH),
+        help=(
+            "SQLite simulated-circuit database to reuse before running "
+            "ngspice. If the path does not exist, simulations run normally."
+        ),
+    )
+    parser.add_argument(
+        "--no-circuit-database",
+        action="store_true",
+        help="Disable simulated-circuit database reuse.",
     )
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument("--corner", default="tt")

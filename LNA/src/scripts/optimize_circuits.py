@@ -16,6 +16,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.database.transistors import GROUPS as TRANSISTOR_GROUPS
+from src.scripts.circuit_database import (
+    CircuitDatabase,
+    DEFAULT_CIRCUIT_DATABASE_PATH,
+    netlist_context_from_config,
+)
 from src.scripts.netlist_generator import (
     DEFAULT_NETWORK_DATABASE_PATH,
     OPEN_RLC_PARALLEL_IDENTIFIER,
@@ -74,6 +79,18 @@ def format_elapsed(seconds):
     if minutes:
         return f"{minutes}m {seconds}s"
     return f"{seconds}s"
+
+
+def resolve_circuit_database_path(path, disabled=False):
+    if disabled:
+        return None
+    if path is None:
+        path = DEFAULT_CIRCUIT_DATABASE_PATH
+    path_text = str(path).strip()
+    if not path_text or path_text.lower() in {"0", "false", "no", "none", "off"}:
+        return None
+    path = Path(path_text)
+    return path if path.exists() else None
 
 
 def resolve_transistor_group(group_name):
@@ -732,7 +749,7 @@ def unique_records(records):
 
 
 def compact_record(record):
-    return {
+    compact = {
         "evaluation_id": record["evaluation_id"],
         "status": record["status"],
         "valid": record["valid"],
@@ -747,6 +764,10 @@ def compact_record(record):
         "circuit_dir": record["circuit_dir"],
         "error": record.get("error"),
     }
+    if record.get("reused_from_database"):
+        compact["reused_from_database"] = True
+        compact["database_hit"] = record.get("database_hit")
+    return compact
 
 
 class NgsaIvOptimizer:
@@ -765,6 +786,7 @@ class NgsaIvOptimizer:
         fail_fast,
         rng,
         preserve_history=False,
+        circuit_database_path=None,
     ):
         self.output_root = Path(output_root)
         self.transistor_axes = transistor_axes
@@ -777,6 +799,21 @@ class NgsaIvOptimizer:
         self.simulation_timeout_seconds = simulation_timeout_seconds
         self.fail_fast = fail_fast
         self.rng = rng
+        self.netlist_context = netlist_context_from_config(
+            {"netlist_parameters": netlist_kwargs}
+        )
+        self.circuit_database_path = (
+            Path(circuit_database_path)
+            if circuit_database_path is not None
+            else None
+        )
+        self.circuit_database = (
+            CircuitDatabase(self.circuit_database_path)
+            if self.circuit_database_path is not None
+            else None
+        )
+        self.database_hits = 0
+        self.simulation_runs = 0
         self.cache = {}
         self.next_circuit_index = 1
         self.history_path = self.output_root / "optimization_history.jsonl"
@@ -786,6 +823,10 @@ class NgsaIvOptimizer:
         self.output_root.mkdir(parents=True, exist_ok=True)
         if not preserve_history:
             self.history_path.write_text("")
+
+    def close(self):
+        if self.circuit_database is not None:
+            self.circuit_database.close()
 
     @property
     def space_sizes(self):
@@ -919,6 +960,96 @@ class NgsaIvOptimizer:
                 flush=True,
             )
 
+    def score_metrics(self, metrics):
+        metrics = normalize_imported_metrics(metrics or {})
+        objectives, missing_metrics = objective_vector(metrics, self.objectives)
+        status = "ok"
+        if missing_metrics:
+            status = "missing_metrics"
+
+        constraint_violations = hard_constraint_violations(
+            metrics,
+            self.hard_constraints,
+        )
+        if constraint_violations:
+            status = (
+                "missing_metrics"
+                if status == "missing_metrics"
+                else "constraint_failed"
+            )
+            objectives = [PENALTY_OBJECTIVE for _ in self.objectives]
+
+        constraint_violation_score = total_constraint_violation(
+            constraint_violations,
+        )
+        if missing_metrics:
+            constraint_violation_score += (
+                PENALTY_OBJECTIVE * len(missing_metrics)
+            )
+
+        return {
+            "status": status,
+            "valid": status == "ok",
+            "metrics": metrics,
+            "objectives": objectives,
+            "missing_metrics": missing_metrics,
+            "constraint_violations": constraint_violations,
+            "constraint_violation_score": constraint_violation_score,
+        }
+
+    def record_from_metrics(
+        self,
+        *,
+        circuit_index,
+        genome,
+        candidate,
+        metrics,
+        circuit_dir,
+        error=None,
+        database_hit=None,
+    ):
+        scored = self.score_metrics(metrics)
+        record = {
+            "evaluation_id": circuit_index,
+            "status": scored["status"],
+            "valid": scored["valid"],
+            "genome": list(genome),
+            "candidate": candidate,
+            "metrics": scored["metrics"],
+            "objectives": scored["objectives"],
+            "objective_specs": self.objectives,
+            "missing_metrics": scored["missing_metrics"],
+            "constraint_violations": scored["constraint_violations"],
+            "constraint_violation_score": scored["constraint_violation_score"],
+            "constraint_violation_count": len(scored["constraint_violations"]),
+            "circuit_dir": circuit_dir,
+            "error": error,
+            "created_at_unix": time.time(),
+        }
+        if database_hit is not None:
+            record["reused_from_database"] = True
+            record["database_hit"] = database_hit
+        return record
+
+    def lookup_circuit_database(self, candidate):
+        if self.circuit_database is None:
+            return None
+        entry = self.circuit_database.lookup(candidate, self.netlist_context)
+        if entry is None:
+            return None
+        with self._state_lock:
+            self.database_hits += 1
+        return {
+            "database_path": str(self.circuit_database_path),
+            "circuit_key": entry["circuit_key"],
+            "source_run": entry["source_run"],
+            "source_history": entry["source_history"],
+            "source_evaluation_id": entry["source_evaluation_id"],
+            "source_circuit_dir": entry["source_circuit_dir"],
+            "duplicate_count": entry["duplicate_count"],
+            "metrics": entry["metrics"],
+        }
+
     def evaluate(self, genome):
         genome = tuple(genome)
         with self._state_lock:
@@ -928,13 +1059,14 @@ class NgsaIvOptimizer:
             self.next_circuit_index += 1
 
         decoded = self.decode_genome(genome)
+        candidate = self.candidate_summary(decoded)
         if decoded["transistor"] is None:
             record = {
                 "evaluation_id": circuit_index,
                 "status": "invalid_transistor",
                 "valid": False,
                 "genome": list(genome),
-                "candidate": self.candidate_summary(decoded),
+                "candidate": candidate,
                 "metrics": {},
                 "objectives": [PENALTY_OBJECTIVE for _ in self.objectives],
                 "objective_specs": self.objectives,
@@ -951,6 +1083,22 @@ class NgsaIvOptimizer:
                 self.cache[genome] = record
             return record
 
+        database_hit = self.lookup_circuit_database(candidate)
+        if database_hit is not None:
+            metrics = database_hit.pop("metrics")
+            record = self.record_from_metrics(
+                circuit_index=circuit_index,
+                genome=genome,
+                candidate=candidate,
+                metrics=metrics,
+                circuit_dir=None,
+                database_hit=database_hit,
+            )
+            self.append_history(record)
+            with self._state_lock:
+                self.cache[genome] = record
+            return record
+
         circuit_dir = create_circuit_bundle(
             output_root=self.output_root,
             circuit_index=circuit_index,
@@ -962,6 +1110,8 @@ class NgsaIvOptimizer:
             vg=decoded["vg"],
             **self.netlist_kwargs,
         )
+        with self._state_lock:
+            self.simulation_runs += 1
 
         status = "ok"
         error = None
@@ -983,27 +1133,13 @@ class NgsaIvOptimizer:
                 analysis_filename=DEFAULT_ANALYSIS_FILENAME,
             )
             metrics = analysis["derived_metrics"]
-            objectives, missing_metrics = objective_vector(metrics, self.objectives)
-            if missing_metrics:
-                status = "missing_metrics"
-            constraint_violations = hard_constraint_violations(
-                metrics,
-                self.hard_constraints,
-            )
-            if constraint_violations:
-                status = (
-                    "missing_metrics"
-                    if status == "missing_metrics"
-                    else "constraint_failed"
-                )
-                objectives = [PENALTY_OBJECTIVE for _ in self.objectives]
-            constraint_violation_score = total_constraint_violation(
-                constraint_violations,
-            )
-            if missing_metrics:
-                constraint_violation_score += (
-                    PENALTY_OBJECTIVE * len(missing_metrics)
-                )
+            scored = self.score_metrics(metrics)
+            status = scored["status"]
+            metrics = scored["metrics"]
+            objectives = scored["objectives"]
+            missing_metrics = scored["missing_metrics"]
+            constraint_violations = scored["constraint_violations"]
+            constraint_violation_score = scored["constraint_violation_score"]
         except TimeoutError as exc:
             self.print_timeout(circuit_index, circuit_dir, exc)
             if self.fail_fast:
@@ -1029,7 +1165,7 @@ class NgsaIvOptimizer:
             "status": status,
             "valid": status == "ok",
             "genome": list(genome),
-            "candidate": self.candidate_summary(decoded),
+            "candidate": candidate,
             "metrics": metrics,
             "objectives": objectives,
             "objective_specs": self.objectives,
@@ -1547,6 +1683,10 @@ def optimize(args):
                 "or pass --overwrite-output to intentionally start over there."
             )
 
+    circuit_database_path = resolve_circuit_database_path(
+        args.circuit_database,
+        args.no_circuit_database,
+    )
     optimizer = NgsaIvOptimizer(
         output_root=args.output_root,
         transistor_axes=transistor_axes,
@@ -1560,6 +1700,7 @@ def optimize(args):
         fail_fast=args.fail_fast,
         rng=rng,
         preserve_history=args.resume_in_place,
+        circuit_database_path=circuit_database_path,
     )
     imported_evaluations = 0
     if resume_data is not None:
@@ -1585,6 +1726,7 @@ def optimize(args):
         "hard_constraints": hard_constraints,
         "search_space": search_space,
         "total_designs": total_designs,
+        "planned_evaluations": planned_simulations,
         "planned_simulations": planned_simulations,
         "planned_initial_simulations": planned_initial_simulations,
         "valid_seed_designs": valid_seed_designs,
@@ -1596,6 +1738,11 @@ def optimize(args):
         "netlist_parameters": netlist_kwargs,
         "simulation_threads": args.sim_threads,
         "simulation_timeout_seconds": args.sim_timeout,
+        "circuit_database": {
+            "requested_path": None if args.no_circuit_database else args.circuit_database,
+            "enabled": circuit_database_path is not None,
+            "path": None if circuit_database_path is None else str(circuit_database_path),
+        },
     }
     if resume_data is not None:
         configuration["resume"] = {
@@ -1633,7 +1780,7 @@ def optimize(args):
         flush=True,
     )
     print(
-        "[optimize_circuits] planned new simulations: "
+        "[optimize_circuits] planned new evaluations: "
         f"{planned_simulations:,} = initial {planned_initial_simulations:,} + "
         f"offspring {args.offspring_size:,} * generations {args.generations:,}",
         flush=True,
@@ -1671,6 +1818,17 @@ def optimize(args):
         f"[optimize_circuits] simulation workers: {args.sim_threads}",
         flush=True,
     )
+    if circuit_database_path is not None:
+        print(
+            f"[optimize_circuits] circuit database reuse: {circuit_database_path}",
+            flush=True,
+        )
+    elif not args.no_circuit_database:
+        print(
+            "[optimize_circuits] circuit database reuse: disabled "
+            f"(not found: {args.circuit_database})",
+            flush=True,
+        )
     print(f"[optimize_circuits] config written to: {config_path}", flush=True)
     if resume_data is None:
         population = initial_population(
@@ -1793,11 +1951,14 @@ def optimize(args):
         "finished_at_unix": finished_at_unix,
         "elapsed_seconds": elapsed_seconds,
         "elapsed_time": format_elapsed(elapsed_seconds),
+        "planned_evaluations": planned_simulations,
         "planned_simulations": planned_simulations,
         "planned_initial_simulations": planned_initial_simulations,
         "total_designs": total_designs,
         "valid_seed_designs": valid_seed_designs,
         "simulation_threads": args.sim_threads,
+        "database_hits": optimizer.database_hits,
+        "simulation_runs": optimizer.simulation_runs,
         "evaluations": len(all_records),
         "valid_evaluations": len(valid_records),
         "pareto_source": "population" if resume_data is not None else "all_evaluations",
@@ -1818,12 +1979,19 @@ def optimize(args):
         f"{len(pareto)} Pareto candidates",
         flush=True,
     )
+    print(
+        "[optimize_circuits] evaluation sources: "
+        f"{optimizer.database_hits:,} database hit(s), "
+        f"{optimizer.simulation_runs:,} ngspice simulation(s)",
+        flush=True,
+    )
     print(f"[optimize_circuits] finished at: {finished_at}", flush=True)
     print(
         "[optimize_circuits] elapsed time: "
         f"{format_elapsed(elapsed_seconds)} ({elapsed_seconds:.3f} seconds)",
         flush=True,
     )
+    optimizer.close()
     return summary
 
 
@@ -1945,6 +2113,19 @@ def main():
         "--sim-timeout",
         type=float,
         help="Kill an ngspice simulation after this many seconds.",
+    )
+    parser.add_argument(
+        "--circuit-database",
+        default=str(DEFAULT_CIRCUIT_DATABASE_PATH),
+        help=(
+            "SQLite simulated-circuit database to reuse before running "
+            "ngspice. If the path does not exist, simulations run normally."
+        ),
+    )
+    parser.add_argument(
+        "--no-circuit-database",
+        action="store_true",
+        help="Disable simulated-circuit database reuse.",
     )
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument("--corner", default="tt")

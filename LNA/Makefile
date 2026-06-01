@@ -12,7 +12,11 @@ PASSIVE_MAX_RESISTORS_PER_NETWORK ?=
 SIMULATE_CIRCUITS_SCRIPT := src/scripts/simulate_circuits.py
 OPTIMIZE_CIRCUITS_SCRIPT := src/scripts/optimize_circuits.py
 OPTIMIZE_CIRCUITS_MOPSO_SCRIPT := src/scripts/optimize_circuits_mopso.py
+CIRCUIT_DATABASE_SCRIPT := src/scripts/build_circuit_database.py
 CIRCUIT_OUTPUT_ROOT ?= generated_circuits
+CIRCUIT_DATABASE_OUTPUT ?= data/circuit_database/circuits.sqlite
+CIRCUIT_DATABASE_RUNS ?= $(OPT_OUTPUT_ROOT) mopso_archive
+CIRCUIT_DATABASE_OVERWRITE ?= 1
 
 SIM_THREADS ?= 8
 SIM_PRIORITY ?= high
@@ -41,6 +45,7 @@ OPT_OVERWRITE_OUTPUT ?=
 OPT_SIM_THREADS ?= 8
 OPT_SIM_TIMEOUT ?= 180
 OPT_DEMO_SIM_TIMEOUT ?= 120
+OPT_CIRCUIT_DATABASE ?= $(CIRCUIT_DATABASE_OUTPUT)
 OPT_SEED ?= 7
 OPT_MAX_NF_DB ?= 10
 OPT_MAX_POWER_DBM ?= 
@@ -48,7 +53,7 @@ OPT_MIN_S21_DB ?= 0
 OPT_MIN_F_BW ?= 
 OPT_MAX_S11_DB ?= 
 
-MOPSO_OUTPUT_ROOT ?= optimized_circuits_mopso
+MOPSO_OUTPUT_ROOT ?= optimized_circuits_mopso_constrained
 MOPSO_TRANSISTOR_GROUP ?= nmos
 MOPSO_SWARM_SIZE ?= 300
 MOPSO_ITERATIONS ?= 400
@@ -66,6 +71,7 @@ MOPSO_OVERWRITE_OUTPUT ?=
 MOPSO_SIM_THREADS ?= 8
 MOPSO_SIM_TIMEOUT ?= 180
 MOPSO_DEMO_SIM_TIMEOUT ?= 120
+MOPSO_CIRCUIT_DATABASE ?= $(CIRCUIT_DATABASE_OUTPUT)
 MOPSO_SEED ?= 7
 MOPSO_MAX_NF_DB ?= 10
 MOPSO_MAX_POWER_DBM ?=
@@ -73,7 +79,8 @@ MOPSO_MIN_S21_DB ?= 0
 MOPSO_MIN_F_BW ?=
 MOPSO_MAX_S11_DB ?=
 
-ANALYSIS_RUN_ROOT ?= $(MOPSO_OUTPUT_ROOT)
+ANALYSIS_RUN_ROOT ?= mopso_archive
+#ANALYSIS_RUN_ROOT ?= $(MOPSO_OUTPUT_ROOT)
 #ANALYSIS_RUN_ROOT ?= $(OPT_OUTPUT_ROOT)
 #ANALYSIS_RUN_ROOT ?= data/02_optimized_circuits_6_0.9_0.15
 ANALYSIS_OUTPUT_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/results
@@ -115,7 +122,7 @@ ANALYSIS_FILTER_ARGS = $(strip \
 )
 ANALYSIS_COMPARE_LABEL_ARGS = $(if $(ANALYSIS_COMPARE_LABELS),--labels $(ANALYSIS_COMPARE_LABELS))
 
-.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo analysis-summary analysis-export analysis-plots analysis-plots-history analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
+.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo build-circuit-database analysis-summary analysis-export analysis-plots analysis-plots-history analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
 
 all: generate-passive-network-multiobjective
 
@@ -170,6 +177,7 @@ optimize-circuits: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUITS_SCR
 		$(if $(OPT_AC_START),--ac-start $(OPT_AC_START),) \
 		$(if $(OPT_AC_STOP),--ac-stop $(OPT_AC_STOP),) \
 		--sim-threads $(OPT_SIM_THREADS) \
+		$(if $(OPT_CIRCUIT_DATABASE),--circuit-database $(OPT_CIRCUIT_DATABASE),) \
 		--vg-start 0.75 \
 		--vg-stop 1.25 \
 		--vg-step 0.005 \
@@ -207,6 +215,7 @@ optimize-circuits-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUIT
 		$(if $(OPT_AC_STOP),--ac-stop $(OPT_AC_STOP),) \
 		--sim-threads $(OPT_SIM_THREADS) \
 		--sim-timeout $(OPT_DEMO_SIM_TIMEOUT) \
+		$(if $(OPT_CIRCUIT_DATABASE),--circuit-database $(OPT_CIRCUIT_DATABASE),) \
 		--vg-start 0.75 \
 		--vg-stop 1.15 \
 		--vg-step 0.025 \
@@ -240,6 +249,7 @@ optimize-circuits-mopso: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_CIRCUI
 		$(if $(MOPSO_AC_START),--ac-start $(MOPSO_AC_START),) \
 		$(if $(MOPSO_AC_STOP),--ac-stop $(MOPSO_AC_STOP),) \
 		--sim-threads $(MOPSO_SIM_THREADS) \
+		$(if $(MOPSO_CIRCUIT_DATABASE),--circuit-database $(MOPSO_CIRCUIT_DATABASE),) \
 		--vg-start 0.75 \
 		--vg-stop 1.25 \
 		--vg-step 0.005 \
@@ -278,6 +288,7 @@ optimize-circuits-mopso-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_C
 		$(if $(MOPSO_AC_STOP),--ac-stop $(MOPSO_AC_STOP),) \
 		--sim-threads $(MOPSO_SIM_THREADS) \
 		--sim-timeout $(MOPSO_DEMO_SIM_TIMEOUT) \
+		$(if $(MOPSO_CIRCUIT_DATABASE),--circuit-database $(MOPSO_CIRCUIT_DATABASE),) \
 		--vg-start 0.75 \
 		--vg-stop 1.15 \
 		--vg-step 0.025 \
@@ -300,6 +311,12 @@ optimize-circuits-mopso-demo: $(PASSIVE_NETWORK_MULTI_OBJECTIVE_DB) $(OPTIMIZE_C
 		$(if $(MOPSO_MIN_F_BW),--min-f-bw $(MOPSO_MIN_F_BW),) \
 		$(if $(MOPSO_MAX_S11_DB),--max-s11-db $(MOPSO_MAX_S11_DB),) \
 		--seed 1
+
+build-circuit-database: $(CIRCUIT_DATABASE_SCRIPT)
+	$(PYTHON) $(CIRCUIT_DATABASE_SCRIPT) \
+		--output $(CIRCUIT_DATABASE_OUTPUT) \
+		$(if $(filter 1 true yes,$(CIRCUIT_DATABASE_OVERWRITE)),--overwrite,) \
+		$(CIRCUIT_DATABASE_RUNS)
 
 analysis-summary:
 	$(ANALYSIS_PYTHON) analysis/summarize_optimization.py $(ANALYSIS_RUN_ROOT) --top-count $(ANALYSIS_TOP_COUNT) $(ANALYSIS_FILTER_ARGS)
