@@ -15,8 +15,12 @@ OPTIMIZE_CIRCUITS_MOPSO_SCRIPT := src/scripts/optimize_circuits_mopso.py
 CIRCUIT_DATABASE_SCRIPT := src/scripts/build_circuit_database.py
 CIRCUIT_OUTPUT_ROOT ?= generated_circuits
 CIRCUIT_DATABASE_OUTPUT ?= data/circuit_database/circuits.sqlite
-CIRCUIT_DATABASE_RUNS ?= $(OPT_OUTPUT_ROOT) mopso_archive
-CIRCUIT_DATABASE_OVERWRITE ?= 1
+CIRCUIT_DATABASE_RUNS ?= $(OPT_OUTPUT_ROOT) \
+												 mopso_archive \
+												 $(OPT_OUTPUT_ROOT)_unconstrained \
+												 optimized_circuits_mopso_constrained_backup
+CIRCUIT_DATABASE_OVERWRITE ?= 0
+CIRCUIT_DATABASE_SKIP_MISSING ?= 1
 
 SIM_THREADS ?= 8
 SIM_PRIORITY ?= high
@@ -122,7 +126,7 @@ ANALYSIS_FILTER_ARGS = $(strip \
 )
 ANALYSIS_COMPARE_LABEL_ARGS = $(if $(ANALYSIS_COMPARE_LABELS),--labels $(ANALYSIS_COMPARE_LABELS))
 
-.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo build-circuit-database analysis-summary analysis-export analysis-plots analysis-plots-history analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
+.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo build-circuit-database append-circuit-database rebuild-circuit-database analysis-summary analysis-export analysis-plots analysis-plots-history analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
 
 all: generate-passive-network-multiobjective
 
@@ -316,7 +320,13 @@ build-circuit-database: $(CIRCUIT_DATABASE_SCRIPT)
 	$(PYTHON) $(CIRCUIT_DATABASE_SCRIPT) \
 		--output $(CIRCUIT_DATABASE_OUTPUT) \
 		$(if $(filter 1 true yes,$(CIRCUIT_DATABASE_OVERWRITE)),--overwrite,) \
+		$(if $(filter 1 true yes,$(CIRCUIT_DATABASE_SKIP_MISSING)),--skip-missing,) \
 		$(CIRCUIT_DATABASE_RUNS)
+
+append-circuit-database: build-circuit-database
+
+rebuild-circuit-database:
+	$(MAKE) build-circuit-database CIRCUIT_DATABASE_OVERWRITE=1
 
 analysis-summary:
 	$(ANALYSIS_PYTHON) analysis/summarize_optimization.py $(ANALYSIS_RUN_ROOT) --top-count $(ANALYSIS_TOP_COUNT) $(ANALYSIS_FILTER_ARGS)
