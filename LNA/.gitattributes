@@ -1,3 +1,6 @@
 data filter=lfs diff=lfs merge=lfs -text
 data/circuit_database filter=lfs diff=lfs merge=lfs -text
 data/circuit_database/circuits.sqlite filter=lfs diff=lfs merge=lfs -text
+optimized_circuits_6_0.9_0.15/optimization_history.jsonl filter=lfs diff=lfs merge=lfs -text
+optimized_circuits_mopso_constrained/optimization_history.jsonl filter=lfs diff=lfs merge=lfs -text
+mopso_archive/optimization_history.jsonl filter=lfs diff=lfs merge=lfs -text
