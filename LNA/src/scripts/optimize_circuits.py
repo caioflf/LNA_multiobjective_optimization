@@ -1861,14 +1861,13 @@ def optimize(args):
             )
         if len(population) < args.population_size:
             raise RuntimeError("Could not refill the resumed population with unique candidates")
-    generation_pareto_source = None
     if not args.resume_in_place:
         write_generation(
             args.output_root,
             0,
             population,
             list(optimizer.cache.values()),
-            pareto_source_records=generation_pareto_source,
+            pareto_source_records=population,
         )
 
     for generation_step in range(1, args.generations + 1):
@@ -1924,7 +1923,7 @@ def optimize(args):
             generation,
             population,
             list(optimizer.cache.values()),
-            pareto_source_records=generation_pareto_source,
+            pareto_source_records=population,
         )
 
     all_records = list(optimizer.cache.values())
