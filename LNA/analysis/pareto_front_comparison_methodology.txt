@@ -1,0 +1,798 @@
+Methodology for Comparing Pareto Frontiers Across NGSA-IV and MOPSO Runs
+========================================================================
+
+Purpose
+-------
+
+The goal is to compare the Pareto frontier quality of LNA optimization runs
+produced by two optimizers:
+
+1. NGSA-IV / NSGA-style optimization.
+2. MOPSO optimization.
+
+The comparison must be done for both constraint regimes:
+
+1. Runs optimized with hard constraints.
+2. Runs optimized without hard constraints.
+
+The comparison should answer four separate questions:
+
+1. Which optimizer produced a better frontier when both were run with hard
+   constraints?
+2. Which optimizer produced a better frontier when both were run without hard
+   constraints?
+3. If all runs are judged with the same final feasibility constraints, which
+   optimizer produced the best feasible frontier?
+4. Did the Pareto frontier improve faster over generations or iterations for
+   one optimizer than for the other?
+
+
+Important Terminology
+---------------------
+
+Optimization constraints:
+    Constraints used inside the optimizer while it is running. These are stored
+    in each run's optimization_config.json under "hard_constraints". In the
+    current constrained setup, the hard constraints are:
+
+        NF_db <= 10
+        S21_db >= 0
+
+Analysis constraints:
+    Constraints applied after a run has already produced data. These are passed
+    to analysis scripts through Make variables such as ANALYSIS_MAX_NF_DB and
+    ANALYSIS_MIN_S21_DB. Analysis constraints do not change the optimization
+    history; they only decide which records are considered feasible during
+    analysis.
+
+Native frontier:
+    The Pareto frontier produced using the run's own validity logic. For a
+    constrained run, records with violated hard constraints are not valid. For
+    an unconstrained run, validity usually means the circuit simulated and
+    produced the required metrics.
+
+Common-feasibility frontier:
+    The Pareto frontier obtained after applying the same post-analysis
+    constraints to every run, regardless of whether those constraints were used
+    during optimization.
+
+Record scope:
+    The analysis-performance script supports two record pools:
+
+        valid:
+            Use only records where record["valid"] is true.
+
+        all:
+            Use every history record that has finite objective metrics, then
+            let analysis constraints decide which records are feasible.
+
+    This distinction is very important. If record_scope is all and no analysis
+    constraints are passed, then a record that failed the optimizer hard
+    constraints can still enter the analysis if it has finite metrics. That is
+    useful for post-run studies, but it is not the same as evaluating the
+    optimizer's native constrained frontier.
+
+
+Required Files
+--------------
+
+For numerical final-front comparison:
+
+    optimization_history.jsonl
+    optimization_config.json
+
+optimization_history.jsonl is mandatory. optimization_config.json is strongly
+recommended because it stores algorithm name, objectives, hard constraints, and
+planned evaluation counts. If optimization_config.json is missing, the current
+analysis code falls back to the default objective list, but algorithm name,
+planned evaluations, and generation inference may be unavailable.
+
+For Pareto evolution plots:
+
+    optimization_history.jsonl
+    optimization_config.json
+
+The pareto-evolution scripts use only history and config. They do not need the
+generations folder. However, they do need the config to infer generation or
+iteration checkpoints. A run directory that has only optimization_history.jsonl
+can be used by analysis-performance, but not reliably by pareto-evolution
+unless the config is restored.
+
+For MOPSO particle-level interpretation:
+
+    swarm/iteration_XXXX.json
+    generations/generation_XXXX.json
+
+These are optional for the final Pareto comparison, but useful when explaining
+MOPSO iteration progress, repeated genomes, and cached particle visits.
+
+
+Current Workspace Notes
+-----------------------
+
+The current workspace contains these likely run roots:
+
+    optimized_circuits_6_0.9_0.15
+    optimized_circuits_6_0.9_0.15_unconstrained
+    optimized_circuits_mopso_constrained
+    optimized_circuits_mopso_constrained_backup
+    mopso_archive
+
+The checked configs show:
+
+    optimized_circuits_6_0.9_0.15:
+        algorithm = NGSA-IV
+        hard constraints = NF_db <= 10 and S21_db >= 0
+
+    optimized_circuits_mopso_constrained:
+        algorithm = MOPSO
+        hard constraints = NF_db <= 10 and S21_db >= 0
+
+    mopso_archive:
+        algorithm = MOPSO
+        hard constraints = NF_db <= 10 and S21_db >= 0
+
+    optimized_circuits_6_0.9_0.15_unconstrained:
+        currently has optimization_history.jsonl only in this workspace.
+        It does not currently have optimization_config.json.
+
+Before writing final conclusions, verify the actual unconstrained MOPSO run
+root and verify that its optimization_config.json has an empty hard_constraints
+list, or at least does not contain the NF_db and S21_db limits.
+
+
+Objectives and Metric Directions
+--------------------------------
+
+All comparisons must use the same objective definitions. The current objective
+set is:
+
+    NF_db      minimize
+    power_dBm minimize
+    S21_db    maximize
+    F_BW      maximize
+    S11_db    minimize
+
+For computation, the analysis scripts convert all objectives to minimization
+space:
+
+    minimize objectives stay as value
+    maximize objectives become -value
+
+Therefore:
+
+    lower NF_db is better
+    lower power_dBm is better
+    higher S21_db is better
+    higher F_BW is better
+    lower S11_db is better
+
+The Pareto dominance rule is:
+
+    A point dominates another point if it is no worse in every objective and
+    strictly better in at least one objective.
+
+A Pareto frontier is the set of non-dominated points.
+
+
+Constraint Regimes to Compare
+-----------------------------
+
+Use four labels:
+
+    NGSA_C   NGSA-IV run with optimization constraints
+    MOPSO_C  MOPSO run with optimization constraints
+    NGSA_U   NGSA-IV run without optimization constraints
+    MOPSO_U  MOPSO run without optimization constraints
+
+Use these labels consistently in every plot, CSV, JSON report, and written
+discussion.
+
+Recommended comparison groups:
+
+1. Native constrained optimizer comparison:
+
+       NGSA_C vs MOPSO_C
+
+   Purpose:
+       Compare the final frontiers produced by both algorithms when the same
+       hard constraints guided the search.
+
+   Recommended record scope:
+       valid
+
+   Analysis constraints:
+       blank / disabled
+
+   Rationale:
+       The optimizer already decided validity using the hard constraints.
+       Passing post-analysis constraints is redundant for the native frontier,
+       although it should produce a similar result if the constraints match.
+
+2. Native unconstrained optimizer comparison:
+
+       NGSA_U vs MOPSO_U
+
+   Purpose:
+       Compare the final frontiers produced by both algorithms when no hard
+       constraints guided the search.
+
+   Recommended record scope:
+       valid
+
+   Analysis constraints:
+       blank / disabled
+
+   Rationale:
+       This shows what each optimizer preferred when it was not forced to keep
+       gain or NF inside the final feasibility box.
+
+3. Common feasible comparison across all runs:
+
+       NGSA_C vs MOPSO_C vs NGSA_U vs MOPSO_U
+
+   Purpose:
+       Judge every run under the same final engineering requirements, even if
+       those requirements were not used during optimization.
+
+   Recommended record scope:
+       all
+
+   Analysis constraints:
+       NF_db <= 10
+       S21_db >= 0
+
+   Rationale:
+       This answers whether unconstrained exploration found good feasible
+       circuits anyway, and whether constrained optimization reached a better
+       feasible frontier faster or more reliably.
+
+4. Unfiltered final-front comparison across all runs:
+
+       NGSA_C vs MOPSO_C vs NGSA_U vs MOPSO_U
+
+   Purpose:
+       Show the complete tradeoff surface each run explored, without forcing
+       final feasibility.
+
+   Recommended record scope:
+       all
+
+   Analysis constraints:
+       blank / disabled
+
+   Rationale:
+       This reveals whether a run has attractive but infeasible points, such as
+       low NF with negative gain, high bandwidth with bad gain, or low power
+       with unacceptable matching.
+
+
+Numerical Metrics
+-----------------
+
+Use analysis/evaluate_optimization.py through:
+
+    make analysis-performance
+
+The script computes each run's final Pareto front, then computes a combined
+reference frontier from all provided runs.
+
+The output includes:
+
+    front_quality_report.json
+    front_quality_summary.csv
+
+The key columns are:
+
+    feasible_records:
+        Number of records that passed the chosen record scope and analysis
+        constraints.
+
+    optimizer_valid_records:
+        Number of records marked valid by the optimizer.
+
+    pareto_records:
+        Number of non-dominated records in that run's own feasible pool.
+
+    combined_pareto_contribution:
+        Number of records from that run that remain on the combined
+        non-dominated frontier across all compared runs.
+
+    hypervolume:
+        Dominated volume in normalized minimization objective space.
+        Larger is better.
+
+    generational_distance:
+        Distance from the run frontier to the combined reference frontier.
+        Smaller is better.
+
+    inverse_generational_distance:
+        Distance from the combined reference frontier to the run frontier.
+        Smaller is better.
+
+    spacing:
+        Standard deviation of nearest-neighbor distances inside the run
+        frontier.
+        Smaller means more uniform local spacing.
+
+    mean_nearest_neighbor_distance:
+        Mean nearest-neighbor distance inside the run frontier.
+
+    spread_delta:
+        Deb-style spread indicator using combined-front extremes.
+        Smaller is better.
+
+
+Hypervolume Method
+------------------
+
+The script computes hypervolume in normalized minimization objective space.
+
+Steps:
+
+1. Convert all objectives to minimization direction.
+2. Build the per-run Pareto front.
+3. Build the combined non-dominated reference front from all compared runs.
+4. Collect the objective vectors from all per-run fronts.
+5. Compute normalization bounds:
+
+       ideal = best value per objective among all per-run front points
+       nadir = worst value per objective among all per-run front points
+
+6. Normalize every objective:
+
+       normalized = (value - ideal) / (nadir - ideal)
+
+7. Use a normalized reference point.
+
+   Default:
+
+       reference_point = 1.1, 1.1, 1.1, 1.1, 1.1
+
+   The 1.1 margin means the dominated box extends 10 percent past the observed
+   nadir in each normalized dimension.
+
+8. Compute dominated volume.
+
+   For one or two objectives, the script uses exact hypervolume.
+
+   For more than two objectives, the script uses Monte Carlo estimation:
+
+       - draw random points uniformly inside the reference box
+       - count how many sampled points are dominated by at least one Pareto
+         point
+       - hypervolume = box_volume * dominated_count / sample_count
+
+Use the same ANALYSIS_HV_SAMPLES and ANALYSIS_HV_SEED for all comparisons.
+Increasing samples reduces random noise, especially for the five-objective
+case.
+
+Recommended values:
+
+    ANALYSIS_HV_SAMPLES=50000 for fast checks
+    ANALYSIS_HV_SAMPLES=200000 or more for final reported numbers
+    ANALYSIS_HV_SEED=1, fixed for reproducibility
+
+
+Generational Distance and IGD Method
+------------------------------------
+
+The reference front is the combined non-dominated frontier from all compared
+runs.
+
+Generational Distance (GD):
+
+    For every point in a run's Pareto front, find the nearest point in the
+    combined reference front. Combine the distances using the selected power.
+
+With ANALYSIS_GD_POWER=2, the script computes an RMS-like distance:
+
+    GD = sqrt(mean(distance^2))
+
+Interpretation:
+
+    Lower GD means the run's frontier is closer to the best known combined
+    frontier.
+
+Inverse Generational Distance (IGD):
+
+    For every point in the combined reference front, find the nearest point in
+    the run's Pareto front. Combine the distances using the selected power.
+
+Interpretation:
+
+    Lower IGD means the run covers the combined reference frontier more fully.
+
+GD can look good even if a run only covers one region of the reference front.
+IGD penalizes missing regions more strongly.
+
+
+Spacing and Spread
+------------------
+
+Spacing:
+
+    Compute nearest-neighbor distances inside a run frontier.
+    Report the standard deviation of those distances.
+
+Interpretation:
+
+    Smaller spacing means the points are more uniformly distributed locally.
+    It does not mean the run found a better frontier by itself.
+
+Spread delta:
+
+    The script uses a Deb-style spread metric. It compares:
+
+        - distances from reference-front extremes to the run frontier
+        - deviations of nearest-neighbor distances from their mean
+
+Interpretation:
+
+    Smaller spread_delta means better distribution and better coverage of the
+    reference-front extremes.
+
+Do not rank algorithms using spacing or spread alone. A poor frontier can be
+very uniformly spaced. Always interpret spacing and spread together with
+hypervolume, GD, IGD, and combined_pareto_contribution.
+
+
+Recommended Numeric Analysis Commands
+-------------------------------------
+
+Replace the placeholders with the actual unconstrained run directories:
+
+    NSGA_C=optimized_circuits_6_0.9_0.15
+    MOPSO_C=optimized_circuits_mopso_constrained
+    NSGA_U=optimized_circuits_6_0.9_0.15_unconstrained
+    MOPSO_U=<your_unconstrained_mopso_run>
+
+1. Native constrained comparison:
+
+    make analysis-performance \
+      ANALYSIS_COMPARE_RUNS="optimized_circuits_6_0.9_0.15 optimized_circuits_mopso_constrained" \
+      ANALYSIS_COMPARE_LABELS="NGSA_C MOPSO_C" \
+      ANALYSIS_PERFORMANCE_OUTPUT_DIR=analysis/performance/native_constrained \
+      ANALYSIS_PERFORMANCE_RECORD_SCOPE=valid \
+      ANALYSIS_MAX_NF_DB= \
+      ANALYSIS_MIN_S21_DB= \
+      ANALYSIS_MAX_POWER_DBM= \
+      ANALYSIS_MIN_F_BW= \
+      ANALYSIS_MAX_S11_DB=
+
+2. Native unconstrained comparison:
+
+    make analysis-performance \
+      ANALYSIS_COMPARE_RUNS="optimized_circuits_6_0.9_0.15_unconstrained <your_unconstrained_mopso_run>" \
+      ANALYSIS_COMPARE_LABELS="NGSA_U MOPSO_U" \
+      ANALYSIS_PERFORMANCE_OUTPUT_DIR=analysis/performance/native_unconstrained \
+      ANALYSIS_PERFORMANCE_RECORD_SCOPE=valid \
+      ANALYSIS_MAX_NF_DB= \
+      ANALYSIS_MIN_S21_DB= \
+      ANALYSIS_MAX_POWER_DBM= \
+      ANALYSIS_MIN_F_BW= \
+      ANALYSIS_MAX_S11_DB=
+
+3. Common feasible comparison across all runs:
+
+    make analysis-performance \
+      ANALYSIS_COMPARE_RUNS="optimized_circuits_6_0.9_0.15 optimized_circuits_mopso_constrained optimized_circuits_6_0.9_0.15_unconstrained <your_unconstrained_mopso_run>" \
+      ANALYSIS_COMPARE_LABELS="NGSA_C MOPSO_C NGSA_U MOPSO_U" \
+      ANALYSIS_PERFORMANCE_OUTPUT_DIR=analysis/performance/common_feasible_all \
+      ANALYSIS_PERFORMANCE_RECORD_SCOPE=all \
+      ANALYSIS_MAX_NF_DB=10 \
+      ANALYSIS_MIN_S21_DB=0 \
+      ANALYSIS_MAX_POWER_DBM= \
+      ANALYSIS_MIN_F_BW= \
+      ANALYSIS_MAX_S11_DB=
+
+4. Unfiltered comparison across all runs:
+
+    make analysis-performance \
+      ANALYSIS_COMPARE_RUNS="optimized_circuits_6_0.9_0.15 optimized_circuits_mopso_constrained optimized_circuits_6_0.9_0.15_unconstrained <your_unconstrained_mopso_run>" \
+      ANALYSIS_COMPARE_LABELS="NGSA_C MOPSO_C NGSA_U MOPSO_U" \
+      ANALYSIS_PERFORMANCE_OUTPUT_DIR=analysis/performance/unfiltered_all \
+      ANALYSIS_PERFORMANCE_RECORD_SCOPE=all \
+      ANALYSIS_MAX_NF_DB= \
+      ANALYSIS_MIN_S21_DB= \
+      ANALYSIS_MAX_POWER_DBM= \
+      ANALYSIS_MIN_F_BW= \
+      ANALYSIS_MAX_S11_DB=
+
+For final reported hypervolume values, rerun with a larger Monte Carlo sample
+count:
+
+    ANALYSIS_HV_SAMPLES=200000
+    ANALYSIS_HV_SEED=1
+    ANALYSIS_GD_POWER=2
+
+
+Visual Pareto Evolution Comparison
+----------------------------------
+
+Use:
+
+    make analysis-pareto-evolution-compare
+
+This creates one PNG per inferred generation or iteration and overlays the 2D
+Pareto frontier from two or more runs.
+
+Important behavior:
+
+    - The script uses optimization_history.jsonl and optimization_config.json.
+    - It infers checkpoints from population/swarm size and generation/iteration
+      count.
+    - It can plot common generations only, or the union of available
+      generations.
+    - The plotted frontier line is a staircase boundary, not diagonal
+      interpolation.
+    - The shaded frontier area is built from dominated rectangles, matching
+      the 2D square-area method.
+    - Constraint regions can be shaded without filtering points.
+    - Filtering by constraints is optional and controlled separately.
+
+Available metric pairs:
+
+    NF_db:S21_db
+    NF_db:power_dBm
+    NF_db:F_BW
+    NF_db:S11_db
+    S21_db:power_dBm
+    S21_db:F_BW
+    S21_db:S11_db
+    power_dBm:F_BW
+    power_dBm:S11_db
+    F_BW:S11_db
+
+Use ANALYSIS_PARETO_COMPARE_PAIRS=all to plot all pairs.
+
+Recommended evolution plots:
+
+1. Constrained NGSA vs constrained MOPSO, shaded constraints, no filtering:
+
+    make analysis-pareto-evolution-compare \
+      ANALYSIS_PARETO_COMPARE_RUNS="optimized_circuits_6_0.9_0.15 optimized_circuits_mopso_constrained" \
+      ANALYSIS_PARETO_COMPARE_LABELS="NGSA_C MOPSO_C" \
+      ANALYSIS_PARETO_COMPARE_OUTPUT_DIR=analysis/pareto_evolution_compare/native_constrained \
+      ANALYSIS_PARETO_COMPARE_PAIRS=all \
+      ANALYSIS_PARETO_COMPARE_GENERATION_MODE=common \
+      ANALYSIS_PARETO_COMPARE_FILTER_CONSTRAINTS=0 \
+      ANALYSIS_PARETO_COMPARE_SHADE_CONSTRAINTS=1 \
+      ANALYSIS_PARETO_COMPARE_SHADE_FRONTIER_REGION=1 \
+      ANALYSIS_PARETO_COMPARE_FRONTIER_REGION_ALPHA=0.055 \
+      ANALYSIS_MAX_NF_DB=10 \
+      ANALYSIS_MIN_S21_DB=0
+
+2. Common feasible frontier view, filtering by constraints:
+
+    make analysis-pareto-evolution-compare \
+      ANALYSIS_PARETO_COMPARE_RUNS="optimized_circuits_6_0.9_0.15 optimized_circuits_mopso_constrained optimized_circuits_6_0.9_0.15_unconstrained <your_unconstrained_mopso_run>" \
+      ANALYSIS_PARETO_COMPARE_LABELS="NGSA_C MOPSO_C NGSA_U MOPSO_U" \
+      ANALYSIS_PARETO_COMPARE_OUTPUT_DIR=analysis/pareto_evolution_compare/common_feasible_all \
+      ANALYSIS_PARETO_COMPARE_PAIRS=all \
+      ANALYSIS_PARETO_COMPARE_GENERATION_MODE=common \
+      ANALYSIS_PARETO_COMPARE_FILTER_CONSTRAINTS=1 \
+      ANALYSIS_PARETO_COMPARE_SHADE_CONSTRAINTS=1 \
+      ANALYSIS_PARETO_COMPARE_SHADE_FRONTIER_REGION=1 \
+      ANALYSIS_PARETO_COMPARE_FRONTIER_REGION_ALPHA=0.055 \
+      ANALYSIS_MAX_NF_DB=10 \
+      ANALYSIS_MIN_S21_DB=0
+
+Use generation mode:
+
+    common:
+        Plot only generations/iterations available in every compared run.
+        This is best for direct optimizer-to-optimizer comparisons.
+
+    union:
+        Plot every generation/iteration available in at least one run.
+        This is useful when some runs are still incomplete, but the frame may
+        omit runs that do not yet have that checkpoint.
+
+
+GIF Generation
+--------------
+
+After generating PNG frames, create a GIF from one pair directory:
+
+    make analysis-pareto-animation \
+      ANALYSIS_ANIMATION_INPUT_DIR=analysis/pareto_evolution_compare/native_constrained/nf_db_vs_s21_db \
+      ANALYSIS_ANIMATION_OUTPUT=analysis/pareto_evolution_compare/native_constrained/nf_db_vs_s21_db.gif \
+      ANALYSIS_ANIMATION_FPS=20
+
+For another metric pair, change both the input directory and output filename.
+
+Examples:
+
+    nf_db_vs_power_dbm
+    s21_db_vs_power_dbm
+    f_bw_vs_s11_db
+
+If the GIF does not show new styling or new shading, regenerate the PNG frames
+first. The animation target only uses already existing PNGs.
+
+
+Fairness Controls
+-----------------
+
+Before final conclusions, check these points:
+
+1. Same objectives:
+
+       Every run must use the same objective names and directions.
+
+2. Same metric definitions:
+
+       NF_db, power_dBm, S21_db, F_BW, and S11_db must be derived by the same
+       simulation/analysis code version, or differences must be reported.
+
+3. Same target frequency:
+
+       The current target frequency should be 5 GHz if all runs are intended to
+       be compared directly.
+
+4. Same search space:
+
+       Transistor indexes, VG range, passive-network indexes, and role filters
+       should match unless the purpose is to compare different search spaces.
+
+5. Same budget or clear budget reporting:
+
+       Report history_records and planned_simulations for every run.
+
+       For NGSA-IV:
+           planned visits = population_size + generations * offspring_size
+
+       For MOPSO:
+           planned visits = swarm_size + iterations * swarm_size
+
+       MOPSO history records can be lower than particle visits because repeated
+       genomes are returned from the in-run cache and do not create new history
+       lines. Use swarm/iteration files if particle-level revisit timing must
+       be reported.
+
+6. Same final feasibility policy:
+
+       Do not mix native validity and post-analysis constraints in the same
+       table without explicitly saying so.
+
+7. Completed vs partial runs:
+
+       If a run is incomplete, report the latest completed generation/iteration
+       and history_records. For evolution plots, use common generation mode for
+       direct comparison.
+
+8. Missing config:
+
+       If a run lacks optimization_config.json, do not use it for generation
+       evolution until the config is restored. Numeric final-front analysis can
+       still use default objectives, but the report should state that the config
+       was missing.
+
+
+Recommended Report Structure
+----------------------------
+
+Use this structure in the final thesis/report section:
+
+1. Dataset and runs:
+
+       List each run root, optimizer, constraint regime, seed, target frequency,
+       population/swarm size, generations/iterations, actual history records,
+       and whether the run completed.
+
+2. Objectives:
+
+       State the five objectives and their directions.
+
+3. Constraint policy:
+
+       Separate optimization constraints from analysis constraints.
+       Explain the NF_db <= 10 and S21_db >= 0 feasibility requirement.
+
+4. Pareto construction:
+
+       Explain minimization-space conversion, dominance, per-run frontiers, and
+       combined reference frontier.
+
+5. Numeric comparison:
+
+       Present front_quality_summary.csv tables for:
+
+           native_constrained
+           native_unconstrained
+           common_feasible_all
+           unfiltered_all
+
+6. Visual comparison:
+
+       Include selected 2D pair plots:
+
+           NF_db vs S21_db
+           NF_db vs power_dBm
+           NF_db vs F_BW
+           NF_db vs S11_db
+           S21_db vs power_dBm
+
+       Use all pairs in appendix or supplementary material.
+
+7. Interpretation:
+
+       Discuss hypervolume, GD, IGD, combined contribution, spacing, and spread.
+       Do not select a winner from one metric only.
+
+8. Limitations:
+
+       Discuss incomplete runs, cached MOPSO particle revisits, missing config
+       files, Monte Carlo hypervolume noise, and any differences in search
+       space or simulation code version.
+
+
+How to Interpret Outcomes
+-------------------------
+
+If one run has higher hypervolume and lower GD/IGD:
+
+    It is probably better overall.
+
+If one run has high hypervolume but high IGD:
+
+    It found strong points in one region, but it may not cover the full
+    combined frontier.
+
+If one run has lower GD but poor combined contribution:
+
+    Its frontier may be close to the reference but mostly dominated by another
+    run.
+
+If one run has better spacing but lower hypervolume:
+
+    It is more uniformly distributed but not necessarily better.
+
+If an unconstrained run dominates constrained runs after applying common
+constraints:
+
+    The unconstrained search found feasible high-quality points despite not
+    being guided by constraints.
+
+If constrained runs dominate unconstrained runs in common-feasible analysis:
+
+    The hard constraints likely improved search efficiency toward useful
+    circuits.
+
+If constrained runs look worse in unfiltered analysis but better in
+common-feasible analysis:
+
+    That is expected. The constrained optimizer spent less effort exploring
+    infeasible tradeoffs.
+
+
+Minimum Checklist Before Final Comparison
+-----------------------------------------
+
+1. Confirm run labels:
+
+       NGSA_C, MOPSO_C, NGSA_U, MOPSO_U
+
+2. Confirm each run's hard_constraints in optimization_config.json.
+
+3. Confirm each run has optimization_history.jsonl.
+
+4. Confirm objective definitions match.
+
+5. Run native constrained analysis.
+
+6. Run native unconstrained analysis.
+
+7. Run common feasible analysis with NF_db <= 10 and S21_db >= 0.
+
+8. Run unfiltered analysis with all analysis constraints blank.
+
+9. Generate 2D visual comparisons for all metric pairs.
+
+10. Generate GIFs only after regenerating PNG frames.
+
+11. Report actual history_records and completed generations/iterations.
+
+12. State whether hypervolume is Monte Carlo and report sample count and seed.
+
