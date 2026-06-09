@@ -83,10 +83,10 @@ MOPSO_MIN_S21_DB ?= 0
 MOPSO_MIN_F_BW ?=
 MOPSO_MAX_S11_DB ?=
 
-ANALYSIS_RUN_ROOT ?= mopso_archive
-#ANALYSIS_RUN_ROOT ?= $(MOPSO_OUTPUT_ROOT)
+#ANALYSIS_RUN_ROOT ?= mopso_archive
+ANALYSIS_RUN_ROOT ?= $(MOPSO_OUTPUT_ROOT)
 #ANALYSIS_RUN_ROOT ?= $(OPT_OUTPUT_ROOT)
-#ANALYSIS_RUN_ROOT ?= data/02_optimized_circuits_6_0.9_0.15
+#ANALYSIS_RUN_ROOT ?= optimized_circuits_6_0.9_0.15
 ANALYSIS_OUTPUT_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/results
 ANALYSIS_PYTHON ?= $(PYTHON)
 ANALYSIS_PLOT_PYTHON ?= /opt/homebrew/bin/python3
@@ -97,13 +97,50 @@ ANALYSIS_COLOR_BY ?= wtot_um
 #ANALYSIS_COLOR_BY ?= gate_l
 ANALYSIS_PLOTS_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/plots/$(ANALYSIS_COLOR_BY)
 ANALYSIS_HISTORY_PLOTS_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/plots_history/$(ANALYSIS_COLOR_BY)
+ANALYSIS_PARETO_EVOLUTION_DIR ?= $(ANALYSIS_RUN_ROOT)/analysis/pareto_evolution
+ANALYSIS_PARETO_EVOLUTION_PAIRS ?= NF_db:S21_db,S21_db:power_dBm 
+ANALYSIS_PARETO_EVOLUTION_EVERY ?= 5
+ANALYSIS_PARETO_EVOLUTION_SCOPE ?= all
+ANALYSIS_PARETO_EVOLUTION_MAX_GENERATIONS ?=
+ANALYSIS_PARETO_EVOLUTION_INCLUDE_PARTIAL ?= 0
+ANALYSIS_PARETO_EVOLUTION_HIDE_VALID ?= 1
+ANALYSIS_PARETO_EVOLUTION_FILTER_CONSTRAINTS ?= 0
+ANALYSIS_PARETO_EVOLUTION_SHADE_CONSTRAINTS ?= 1
+ANALYSIS_PARETO_EVOLUTION_SHADE_FRONTIER_REGION ?= 1
+ANALYSIS_PARETO_EVOLUTION_FRONTIER_REGION_ALPHA ?= 0.1
+ANALYSIS_PARETO_EVOLUTION_GENERATION_SOURCE ?= files
+ANALYSIS_PARETO_EVOLUTION_GENERATIONS_DIR ?=
+ANALYSIS_PARETO_EVOLUTION_HIDE_GENERATION_POPULATION ?= 0
+ANALYSIS_PARETO_COMPARE_RUNS ?= $(ANALYSIS_COMPARE_RUNS)
+ANALYSIS_PARETO_COMPARE_LABELS ?= NGSA_C MOPSO_C
+ANALYSIS_PARETO_COMPARE_OUTPUT_DIR ?= analysis/pareto_evolution_compare
+ANALYSIS_PARETO_COMPARE_PAIRS ?= $(ANALYSIS_PARETO_EVOLUTION_PAIRS)
+ANALYSIS_PARETO_COMPARE_EVERY ?= $(ANALYSIS_PARETO_EVOLUTION_EVERY)
+ANALYSIS_PARETO_COMPARE_SCOPE ?= $(ANALYSIS_PARETO_EVOLUTION_SCOPE)
+ANALYSIS_PARETO_COMPARE_GENERATION_MODE ?= common
+ANALYSIS_PARETO_COMPARE_MAX_GENERATIONS ?= $(ANALYSIS_PARETO_EVOLUTION_MAX_GENERATIONS)
+ANALYSIS_PARETO_COMPARE_INCLUDE_PARTIAL ?= $(ANALYSIS_PARETO_EVOLUTION_INCLUDE_PARTIAL)
+ANALYSIS_PARETO_COMPARE_HIDE_HISTORY ?= 0
+ANALYSIS_PARETO_COMPARE_HIDE_VALID ?= $(ANALYSIS_PARETO_EVOLUTION_HIDE_VALID)
+ANALYSIS_PARETO_COMPARE_FILTER_CONSTRAINTS ?= $(ANALYSIS_PARETO_EVOLUTION_FILTER_CONSTRAINTS)
+ANALYSIS_PARETO_COMPARE_SHADE_CONSTRAINTS ?= $(ANALYSIS_PARETO_EVOLUTION_SHADE_CONSTRAINTS)
+ANALYSIS_PARETO_COMPARE_SHADE_FRONTIER_REGION ?= $(ANALYSIS_PARETO_EVOLUTION_SHADE_FRONTIER_REGION)
+ANALYSIS_PARETO_COMPARE_FRONTIER_REGION_ALPHA ?= $(ANALYSIS_PARETO_EVOLUTION_FRONTIER_REGION_ALPHA)
+ANALYSIS_PARETO_COMPARE_GENERATION_SOURCE ?= $(ANALYSIS_PARETO_EVOLUTION_GENERATION_SOURCE)
+ANALYSIS_PARETO_COMPARE_GENERATIONS_DIRS ?=
+ANALYSIS_PARETO_COMPARE_HIDE_GENERATION_POPULATION ?= $(ANALYSIS_PARETO_EVOLUTION_HIDE_GENERATION_POPULATION)
+ANALYSIS_ANIMATION_PAIR ?= nf_db_vs_s21_db
+ANALYSIS_ANIMATION_INPUT_DIR ?= $(ANALYSIS_PARETO_EVOLUTION_DIR)/$(ANALYSIS_ANIMATION_PAIR)
+ANALYSIS_ANIMATION_OUTPUT ?= $(ANALYSIS_PARETO_EVOLUTION_DIR)/$(ANALYSIS_ANIMATION_PAIR).gif
+ANALYSIS_ANIMATION_FPS ?= 40
+ANALYSIS_ANIMATION_ENGINE ?= auto
 ANALYSIS_TOP_COUNT ?= 30000
-ANALYSIS_MAX_NF_DB ?= 
+ANALYSIS_MAX_NF_DB ?=  10
 ANALYSIS_MAX_POWER_DBM ?=
-ANALYSIS_MIN_S21_DB ?= 
+ANALYSIS_MIN_S21_DB ?= 0
 ANALYSIS_MIN_F_BW ?= 
 ANALYSIS_MAX_S11_DB ?= 
-ANALYSIS_COMPARE_RUNS ?= $(OPT_OUTPUT_ROOT) $(MOPSO_OUTPUT_ROOT)
+ANALYSIS_COMPARE_RUNS ?= $(OPT_OUTPUT_ROOT) $(MOPSO_OUTPUT_ROOT) 
 ANALYSIS_COMPARE_LABELS ?=
 ANALYSIS_PERFORMANCE_OUTPUT_DIR ?= analysis/performance
 ANALYSIS_HV_SAMPLES ?= 50000
@@ -114,6 +151,9 @@ ANALYSIS_CLEAN_PATHS ?= $(OPT_OUTPUT_ROOT)/analysis/results \
 												$(OPT_OUTPUT_ROOT)/analysis/results_* \
 												$(OPT_OUTPUT_ROOT)/analysis/plots \
 												$(OPT_OUTPUT_ROOT)/analysis/plots_* \
+												$(OPT_OUTPUT_ROOT)/analysis/pareto_evolution \
+												$(ANALYSIS_RUN_ROOT)/analysis/pareto_evolution \
+												$(ANALYSIS_PARETO_COMPARE_OUTPUT_DIR) \
 												$(OPT_OUTPUT_ROOT)/analysis/.cache \
 												$(OPT_OUTPUT_ROOT)/analysis/.matplotlib-cache \
 												$(OPT_OUTPUT_ROOT)/analysis/__pycache__
@@ -126,7 +166,7 @@ ANALYSIS_FILTER_ARGS = $(strip \
 )
 ANALYSIS_COMPARE_LABEL_ARGS = $(if $(ANALYSIS_COMPARE_LABELS),--labels $(ANALYSIS_COMPARE_LABELS))
 
-.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo build-circuit-database append-circuit-database rebuild-circuit-database analysis-summary analysis-export analysis-plots analysis-plots-history analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
+.PHONY: all generate-passive-network-multiobjective clean-passive-network-multiobjective simulate-circuits analyze-circuits optimize-circuits optimize-circuits-demo optimize-circuits-mopso optimize-circuits-mopso-demo build-circuit-database append-circuit-database rebuild-circuit-database analysis-summary analysis-export analysis-plots analysis-plots-history analysis-pareto-evolution analysis-pareto-evolution-compare analysis-pareto-animation analysis-performance analysis-all analysis-plot-all analysis-plot-all-history clean-analysis clean-circuits
 
 all: generate-passive-network-multiobjective
 
@@ -339,6 +379,52 @@ analysis-plots:
 
 analysis-plots-history:
 	$(ANALYSIS_PLOT_PYTHON) analysis/plot_optimization.py $(ANALYSIS_RUN_ROOT) --output-dir $(ANALYSIS_HISTORY_PLOTS_DIR) --color-by $(ANALYSIS_COLOR_BY) --record-scope all $(ANALYSIS_FILTER_ARGS)
+
+analysis-pareto-evolution:
+	$(ANALYSIS_PLOT_PYTHON) analysis/plot_pareto_evolution.py $(ANALYSIS_RUN_ROOT) \
+		--output-dir $(ANALYSIS_PARETO_EVOLUTION_DIR) \
+		--pairs $(ANALYSIS_PARETO_EVOLUTION_PAIRS) \
+		--generation-step $(ANALYSIS_PARETO_EVOLUTION_EVERY) \
+		--record-scope $(ANALYSIS_PARETO_EVOLUTION_SCOPE) \
+		--generation-source $(ANALYSIS_PARETO_EVOLUTION_GENERATION_SOURCE) \
+		$(if $(ANALYSIS_PARETO_EVOLUTION_GENERATIONS_DIR),--generations-dir $(ANALYSIS_PARETO_EVOLUTION_GENERATIONS_DIR),) \
+		$(if $(ANALYSIS_PARETO_EVOLUTION_MAX_GENERATIONS),--max-generations $(ANALYSIS_PARETO_EVOLUTION_MAX_GENERATIONS),) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_EVOLUTION_INCLUDE_PARTIAL)),--include-partial,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_EVOLUTION_HIDE_VALID)),--hide-valid-overlay,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_EVOLUTION_HIDE_GENERATION_POPULATION)),--hide-generation-population,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_EVOLUTION_FILTER_CONSTRAINTS)),--filter-constraints,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_EVOLUTION_SHADE_CONSTRAINTS)),--shade-constraint-region,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_EVOLUTION_SHADE_FRONTIER_REGION)),--shade-frontier-region,) \
+		--frontier-region-alpha $(ANALYSIS_PARETO_EVOLUTION_FRONTIER_REGION_ALPHA) \
+		$(ANALYSIS_FILTER_ARGS)
+
+analysis-pareto-evolution-compare:
+	$(ANALYSIS_PLOT_PYTHON) analysis/plot_pareto_evolution_compare.py $(ANALYSIS_PARETO_COMPARE_RUNS) \
+		--output-dir $(ANALYSIS_PARETO_COMPARE_OUTPUT_DIR) \
+		--pairs $(ANALYSIS_PARETO_COMPARE_PAIRS) \
+		--generation-step $(ANALYSIS_PARETO_COMPARE_EVERY) \
+		--record-scope $(ANALYSIS_PARETO_COMPARE_SCOPE) \
+		--generation-mode $(ANALYSIS_PARETO_COMPARE_GENERATION_MODE) \
+		--generation-source $(ANALYSIS_PARETO_COMPARE_GENERATION_SOURCE) \
+		$(if $(ANALYSIS_PARETO_COMPARE_GENERATIONS_DIRS),--generations-dirs $(ANALYSIS_PARETO_COMPARE_GENERATIONS_DIRS),) \
+		$(if $(ANALYSIS_PARETO_COMPARE_LABELS),--labels $(ANALYSIS_PARETO_COMPARE_LABELS),) \
+		$(if $(ANALYSIS_PARETO_COMPARE_MAX_GENERATIONS),--max-generations $(ANALYSIS_PARETO_COMPARE_MAX_GENERATIONS),) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_INCLUDE_PARTIAL)),--include-partial,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_HIDE_HISTORY)),--hide-history,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_HIDE_VALID)),--hide-valid-overlay,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_HIDE_GENERATION_POPULATION)),--hide-generation-population,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_FILTER_CONSTRAINTS)),--filter-constraints,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_SHADE_CONSTRAINTS)),--shade-constraint-region,) \
+		$(if $(filter 1 true yes,$(ANALYSIS_PARETO_COMPARE_SHADE_FRONTIER_REGION)),--shade-frontier-region,) \
+		--frontier-region-alpha $(ANALYSIS_PARETO_COMPARE_FRONTIER_REGION_ALPHA) \
+		$(ANALYSIS_FILTER_ARGS)
+
+analysis-pareto-animation:
+	$(ANALYSIS_PLOT_PYTHON) analysis/animate_png_sequence.py $(ANALYSIS_ANIMATION_INPUT_DIR) \
+		--output $(ANALYSIS_ANIMATION_OUTPUT) \
+		--fps $(ANALYSIS_ANIMATION_FPS) \
+		--engine $(ANALYSIS_ANIMATION_ENGINE) \
+		--overwrite
 
 analysis-performance:
 	$(ANALYSIS_PYTHON) analysis/evaluate_optimization.py $(ANALYSIS_COMPARE_RUNS) --output-dir $(ANALYSIS_PERFORMANCE_OUTPUT_DIR) --record-scope $(ANALYSIS_PERFORMANCE_RECORD_SCOPE) --hv-samples $(ANALYSIS_HV_SAMPLES) --hv-seed $(ANALYSIS_HV_SEED) --gd-power $(ANALYSIS_GD_POWER) $(ANALYSIS_COMPARE_LABEL_ARGS) $(ANALYSIS_FILTER_ARGS)
